@@ -12,6 +12,7 @@ function ChatWindow() {
     const [messages, setMessages] = useState([])
     const [input, setInput] = useState('')
     const [isTyping, setIsTyping] = useState(false)
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true)
     const messagesEndRef = useRef(null)
     const inputRef = useRef(null)
 
@@ -122,78 +123,103 @@ function ChatWindow() {
                 </div>
             </header>
 
-            {/* Messages Container */}
-            <div className="chat-messages">
-                <div className="messages-list">
-                    {messages.map((message) => (
-                        <div
-                            key={message.id}
-                            className={`message ${message.type} animate-slide-up`}
-                        >
-                            <div className="message-avatar">
-                                {message.type === 'bot' ? (
-                                    <Bot size={18} />
-                                ) : (
-                                    <User size={18} />
-                                )}
-                            </div>
-                            <div className={`message-bubble ${message.isError ? 'error' : ''}`}>
-                                <div className="message-content">
-                                    {message.content}
-                                </div>
-                                {message.data && (
-                                    <div className="message-data">
-                                        {renderMessageData(message.data)}
+            {module === 'notification' ? (
+                <div className="notification-container animate-fade-in">
+                    <div className="notification-status">
+                        Notifications are <span style={{ color: notificationsEnabled ? 'var(--success)' : 'var(--text-muted)' }}>
+                            {notificationsEnabled ? 'ON' : 'OFF'}
+                        </span>
+                    </div>
+                    <label className="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={notificationsEnabled}
+                            onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                        />
+                        <span className="slider"></span>
+                    </label>
+                    <p style={{ marginTop: '2rem', color: 'var(--text-muted)', maxWidth: '400px' }}>
+                        {notificationsEnabled
+                            ? 'You will receive important updates, exam schedules, and holiday announcements directly on your dashboard.'
+                            : 'Notifications are disabled. You may miss important college announcements and updates.'}
+                    </p>
+                </div>
+            ) : (
+                <>
+                    {/* Messages Container */}
+                    <div className="chat-messages">
+                        <div className="messages-list">
+                            {messages.map((message) => (
+                                <div
+                                    key={message.id}
+                                    className={`message ${message.type} animate-slide-up`}
+                                >
+                                    <div className="message-avatar">
+                                        {message.type === 'bot' ? (
+                                            <Bot size={18} />
+                                        ) : (
+                                            <User size={18} />
+                                        )}
                                     </div>
-                                )}
-                                <div className="message-time">
-                                    {formatTime(message.timestamp)}
+                                    <div className={`message-bubble ${message.isError ? 'error' : ''}`}>
+                                        <div className="message-content">
+                                            {message.content}
+                                        </div>
+                                        {message.data && (
+                                            <div className="message-data">
+                                                {renderMessageData(message.data)}
+                                            </div>
+                                        )}
+                                        <div className="message-time">
+                                            {formatTime(message.timestamp)}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    ))}
+                            ))}
 
-                    {isTyping && (
-                        <div className="message bot animate-fade-in">
-                            <div className="message-avatar">
-                                <Bot size={18} />
-                            </div>
-                            <div className="message-bubble">
-                                <div className="typing-indicator">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
+                            {isTyping && (
+                                <div className="message bot animate-fade-in">
+                                    <div className="message-avatar">
+                                        <Bot size={18} />
+                                    </div>
+                                    <div className="message-bubble">
+                                        <div className="typing-indicator">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            <div ref={messagesEndRef} />
                         </div>
-                    )}
+                    </div>
 
-                    <div ref={messagesEndRef} />
-                </div>
-            </div>
-
-            {/* Input Area */}
-            <div className="chat-input-area glass-card">
-                <div className="chat-input-wrapper">
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        className="chat-input"
-                        placeholder="Type your message..."
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                    />
-                    <button
-                        className="send-btn"
-                        onClick={handleSend}
-                        disabled={!input.trim() || isTyping}
-                        aria-label="Send message"
-                    >
-                        <Send size={20} />
-                    </button>
-                </div>
-            </div>
+                    {/* Input Area */}
+                    <div className="chat-input-area glass-card">
+                        <div className="chat-input-wrapper">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                className="chat-input"
+                                placeholder="Type your message..."
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                            />
+                            <button
+                                className="send-btn"
+                                onClick={handleSend}
+                                disabled={!input.trim() || isTyping}
+                                aria-label="Send message"
+                            >
+                                <Send size={20} />
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     )
 }

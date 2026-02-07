@@ -50,6 +50,39 @@ public class TimetableController {
         return ResponseEntity.ok(Map.of("message", "No more classes today"));
     }
     
+    @GetMapping("/query")
+    public ResponseEntity<?> getTimetableByDay(
+            @AuthenticationPrincipal Student student,
+            @RequestParam String day
+    ) {
+        LocalDate date;
+        switch (day.toLowerCase()) {
+            case "yesterday":
+                date = LocalDate.now().minusDays(1);
+                break;
+            case "tomorrow":
+                date = LocalDate.now().plusDays(1);
+                break;
+            case "next_tomorrow":
+                date = LocalDate.now().plusDays(2);
+                break;
+            case "today":
+            default:
+                date = LocalDate.now();
+                break;
+        }
+
+        String dayOfWeek = date.getDayOfWeek().name();
+        List<Timetable> timetable = timetableRepository
+                .findByStudentIdAndDayOfWeekOrderByPeriodNo(student.getId(), dayOfWeek);
+
+        if (timetable.isEmpty()) {
+            return ResponseEntity.ok(Map.of("message", "No timetable available for " + day + " (" + dayOfWeek + ")"));
+        }
+
+        return ResponseEntity.ok(timetable.stream().map(this::mapToDto).toList());
+    }
+    
     @GetMapping
     public ResponseEntity<?> getAllTimetable(@AuthenticationPrincipal Student student) {
         List<Timetable> timetable = timetableRepository
