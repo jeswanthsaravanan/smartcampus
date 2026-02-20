@@ -1,44 +1,70 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import {
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signInWithPopup,
+    GoogleAuthProvider,
+    signOut,
+    getIdToken
+} from 'firebase/auth'
+import { auth } from '../firebase'
+
+const googleProvider = new GoogleAuthProvider()
 
 const AuthContext = createContext(null)
-
-// Demo user for testing (in production, this comes from backend)
-const DEMO_USERS = [
-    {
-        id: 1,
-        name: 'John Doe',
-        email: 'student@college.edu',
-        password: 'password123',
-        role: 'STUDENT'
-    },
-    {
-        id: 2,
-        name: 'Admin User',
-        email: 'admin@college.edu',
-        password: 'admin123',
-        role: 'ADMIN'
-    }
-]
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
-    // Check for existing session on mount
     useEffect(() => {
-        const storedUser = localStorage.getItem('user')
-        const token = localStorage.getItem('token')
+        // Subscribe to Firebase auth state changes
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                // Get fresh token and profile data if needed
+                try {
+                    const token = await firebaseUser.getIdToken()
 
-        if (storedUser && token) {
-            try {
-                setUser(JSON.parse(storedUser))
-            } catch (e) {
-                localStorage.removeItem('user')
-                localStorage.removeItem('token')
+                    // Fetch profile from backend to ensure Firestore has it
+                    // and to get additional fields (name, role)
+                    const response = await fetch('/api/auth/me', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+
+                    if (response.ok) {
+                        const userData = await response.json()
+                        setUser({
+                            uid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            ...userData,
+                            token // Store token for subsequent API calls
+                        })
+                    } else {
+                        // Profile might not exist yet (first login)
+                        setUser({
+                            uid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            token
+                        })
+                    }
+                } catch (err) {
+                    console.error("Error fetching user profile:", err)
+                    setUser({
+                        uid: firebaseUser.uid,
+                        email: firebaseUser.email
+                    })
+                }
+            } else {
+                setUser(null)
             }
-        }
-        setLoading(false)
+            setLoading(false)
+        })
+
+        return () => unsubscribe()
     }, [])
 
     const login = async (email, password) => {
@@ -46,77 +72,157 @@ export function AuthProvider({ children }) {
         setLoading(true)
 
         try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 800))
+            const userCredential = await signInWithEmailAndPassword(auth, email, password)
+            const firebaseUser = userCredential.user
+            const token = await firebaseUser.getIdToken()
 
-            // Try backend first (when available)
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ email, password })
-                })
-
-                if (response.ok) {
-                    const data = await response.json()
-                    const userData = {
-                        id: data.id,
-                        name: data.name,
-                        email: data.email,
-                        role: data.role
-                    }
-
-                    localStorage.setItem('user', JSON.stringify(userData))
-                    localStorage.setItem('token', data.token)
-                    setUser(userData)
-                    setLoading(false)
-                    return { success: true }
+            // After login, we can try to get the profile
+            const response = await fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
                 }
-            } catch (apiError) {
-                // Backend not available, use demo authentication
-                console.log('Backend not available, using demo mode')
+            })
+
+            let userData = {}
+            if (response.ok) {
+                userData = await response.json()
             }
 
-            // Demo authentication
-            const demoUser = DEMO_USERS.find(
-                u => u.email === email && u.password === password
-            )
+            setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                ...userData,
+                token
+            })
 
-            if (demoUser) {
-                const userData = {
-                    id: demoUser.id,
-                    name: demoUser.name,
-                    email: demoUser.email,
-                    role: demoUser.role
-                }
-
-                // Generate a mock token
-                const mockToken = btoa(JSON.stringify({ userId: demoUser.id, exp: Date.now() + 86400000 }))
-
-                localStorage.setItem('user', JSON.stringify(userData))
-                localStorage.setItem('token', mockToken)
-                setUser(userData)
-                setLoading(false)
-                return { success: true }
-            }
-
-            setError('Invalid email or password')
             setLoading(false)
-            return { success: false, error: 'Invalid email or password' }
-
+            return { success: true }
         } catch (err) {
-            setError('An error occurred. Please try again.')
+            let message = 'Invalid email or password'
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+                message = 'Invalid email or password'
+            } else if (err.code === 'auth/network-request-failed') {
+                message = 'Network error. Please check your connection.'
+            }
+
+            setError(message)
             setLoading(false)
-            return { success: false, error: 'An error occurred. Please try again.' }
+            return { success: false, error: message }
         }
     }
 
-    const logout = () => {
-        localStorage.removeItem('user')
-        localStorage.removeItem('token')
-        setUser(null)
+    const loginWithGoogle = async () => {
+        setError(null)
+        setLoading(true)
+
+        try {
+            const userCredential = await signInWithPopup(auth, googleProvider)
+            const firebaseUser = userCredential.user
+            const token = await firebaseUser.getIdToken()
+
+            // Always call register-profile for Google sign-in
+            // Backend handles both new and existing users, and syncs photo/name each time
+            const regResponse = await fetch('/api/auth/register-profile', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: firebaseUser.displayName || 'Student',
+                    photoUrl: firebaseUser.photoURL || ''
+                })
+            })
+
+            let userData = {}
+            if (regResponse.ok) {
+                userData = await regResponse.json()
+            }
+
+            setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                ...userData,
+                token
+            })
+
+            setLoading(false)
+            return { success: true }
+        } catch (err) {
+            let message = 'Google sign-in failed. Please try again.'
+            if (err.code === 'auth/popup-closed-by-user') {
+                message = 'Sign-in cancelled'
+            } else if (err.code === 'auth/network-request-failed') {
+                message = 'Network error. Please check your connection.'
+            }
+
+            setError(message)
+            setLoading(false)
+            return { success: false, error: message }
+        }
+    }
+
+    const register = async (name, email, password) => {
+        setError(null)
+        setLoading(true)
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+            const firebaseUser = userCredential.user
+            const token = await firebaseUser.getIdToken()
+
+            // Register profile on backend
+            const response = await fetch('/api/auth/register-profile', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name })
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to register profile on server')
+            }
+
+            const userData = await response.json()
+            setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                ...userData,
+                token
+            })
+
+            setLoading(false)
+            return { success: true }
+        } catch (err) {
+            let message = err.message
+            if (err.code === 'auth/email-already-in-use') {
+                message = 'Email already in use'
+            } else if (err.code === 'auth/weak-password') {
+                message = 'Password is too weak'
+            }
+
+            setError(message)
+            setLoading(false)
+            return { success: false, error: message }
+        }
+    }
+
+    const logout = async () => {
+        try {
+            await signOut(auth)
+            setUser(null)
+        } catch (err) {
+            console.error("Logout error:", err)
+        }
+    }
+
+    const getAuthToken = async () => {
+        if (auth.currentUser) {
+            return await auth.currentUser.getIdToken(true)
+        }
+        return null
     }
 
     const value = {
@@ -124,7 +230,10 @@ export function AuthProvider({ children }) {
         loading,
         error,
         login,
+        loginWithGoogle,
+        register,
         logout,
+        getAuthToken,
         isAuthenticated: !!user
     }
 

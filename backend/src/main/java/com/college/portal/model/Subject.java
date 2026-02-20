@@ -5,15 +5,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Plain POJO - maps to Firestore 'notifications' collection.
+ * Plain POJO - maps to Firestore 'subjects' collection.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Notification {
+public class Subject {
     private String id; // Firestore document ID
-    private String title;
-    private String message;
-    private Long createdAt; // epoch millis
-    private Boolean isActive;
+    private String code; // e.g. "22EC601"
+    private String name; // e.g. "Digital Signal Processing"
 }

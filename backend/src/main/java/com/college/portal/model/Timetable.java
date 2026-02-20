@@ -1,41 +1,22 @@
 package com.college.portal.model;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalTime;
 
-@Entity
-@Table(name = "timetable")
+/**
+ * Plain POJO - maps to Firestore 'timetable' collection.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Timetable {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id")
-    private Student student;
-    
-    @Column(name = "day_of_week", nullable = false, length = 15)
-    private String dayOfWeek;
-    
-    @Column(name = "period_no", nullable = false)
+    private String id; // Firestore document ID
+    private String studentId; // Firebase Auth UID
+    private String dayOfWeek; // e.g. "MONDAY"
     private Integer periodNo;
-    
-    @Column(name = "start_time", nullable = false)
-    private LocalTime startTime;
-    
-    @Column(name = "end_time", nullable = false)
-    private LocalTime endTime;
-    
-    @Column(nullable = false, length = 100)
-    private String subject;
-    
-    @Column(name = "staff_name", nullable = false, length = 100)
+    private String startTime; // "09:00"
+    private String endTime; // "09:50"
+    private String subject; // subject code e.g. "22EC601"
     private String staffName;
 }

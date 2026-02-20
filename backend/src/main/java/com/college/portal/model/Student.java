@@ -1,39 +1,28 @@
 package com.college.portal.model;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "students")
+/**
+ * Plain POJO - maps to Firestore 'students' collection.
+ * Document ID = Firebase Auth UID.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Student {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(nullable = false, length = 100)
-    private String name;
-    
-    @Column(nullable = false, unique = true, length = 100)
+    private String uid; // Firebase Auth UID (document ID)
+    private String firstName;
+    private String lastName;
+    private String name; // kept for backward compatibility (display name)
     private String email;
-    
-    @Column(nullable = false)
-    private String password;
-    
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role = Role.STUDENT;
-    
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
-    
-    public enum Role {
-        STUDENT, ADMIN
-    }
+    private String role; // "STUDENT" or "ADMIN"
+    private String registerNumber;
+    private String department;
+    private String batch; // e.g. "2023-2027"
+    private Integer year; // current year of study e.g. 1,2,3,4
+    private String photoUrl; // Google profile photo URL
+    private Long createdAt; // epoch millis
+    private Long updatedAt; // epoch millis
 }

@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './components/Login/Login'
 import Dashboard from './components/Dashboard/Dashboard'
+import Profile from './components/Profile/Profile'
+import AdminPanel from './components/Admin/AdminPanel'
 import ChatWindow from './components/Chat/ChatWindow'
 
 // Protected Route Component
@@ -64,6 +66,22 @@ function App() {
                         }
                     />
                     <Route
+                        path="/profile"
+                        element={
+                            <ProtectedRoute>
+                                <Profile />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute>
+                                <AdminPanel />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
                         path="/chat/:module"
                         element={
                             <ProtectedRoute>
@@ -71,8 +89,8 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<Navigate to="/login" replace />} />
+                    <Route path="*" element={<Navigate to="/login" replace />} />
                 </Routes>
             </BrowserRouter>
         </AuthProvider>

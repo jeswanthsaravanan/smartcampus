@@ -1,9 +1,141 @@
 /**
  * Chatbot Logic - Intent Detection and Response Generation
- * Keyword-based chatbot for Smart College Portal
+ * All data is fetched from the backend (Firestore).
+ * No hardcoded demo data — everything comes from the API.
  */
 
 import { Calendar, Award, UserCheck, Bell } from 'lucide-react'
+import { auth } from '../firebase'
+
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+// ─── Subject aliases for fuzzy matching ─────────────────────────────
+const SUBJECT_ALIASES = {
+    'fiot': 'ET3491 FIOT',
+    'iot': 'ET3491 FIOT',
+    'embedded': 'ET3491 FIOT',
+    'rs': 'CEC348 RS',
+    'remote sensing': 'CEC348 RS',
+    'remote': 'CEC348 RS',
+    'wsn': 'CEC365 WSN',
+    'wireless sensor': 'CEC365 WSN',
+    'sensor network': 'CEC365 WSN',
+    'aiml': 'CS3491 AIML',
+    'ai': 'CS3491 AIML',
+    'artificial intelligence': 'CS3491 AIML',
+    'machine learning': 'CS3491 AIML',
+    'ml': 'CS3491 AIML',
+    'awct': 'CEC333 AWCT',
+    'advanced wireless': 'CEC333 AWCT',
+    'wireless communication': 'CEC333 AWCT',
+    'res': 'OEE351 RES',
+    'renewable': 'OEE351 RES',
+    'renewable energy': 'OEE351 RES',
+    'energy': 'OEE351 RES',
+    'is': 'MX3089 IS',
+    'industry safety': 'MX3089 IS',
+    'safety': 'MX3089 IS',
+    'fiot lab': 'ET3491 FIOT LAB',
+    'iot lab': 'ET3491 FIOT LAB',
+    'aiml lab': 'CS3491 AIML LAB',
+    'ai lab': 'CS3491 AIML LAB',
+    'pt': 'PT',
+    'physical training': 'PT',
+    'lib': 'LIB',
+    'library': 'LIB',
+    'mini project': 'Mini project/ Counseling',
+    'counseling': 'Mini project/ Counseling',
+    'counselling': 'Mini project/ Counseling',
+}
+
+/**
+ * Extract a day-of-week name from a message string.
+ */
+function getDayOfWeekFromMessage(message) {
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    const lower = message.toLowerCase()
+    for (const day of dayNames) {
+        if (lower.includes(day)) return day
+    }
+    return null
+}
+
+/**
+ * Parse an explicit date from a message string.
+ */
+function parseExplicitDate(message) {
+    const tokens = message.split(/\s+/)
+    for (const token of tokens) {
+        const dmyMatch = token.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/)
+        if (dmyMatch) {
+            const [, dd, mm, yyyy] = dmyMatch
+            const date = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd))
+            if (!isNaN(date.getTime())) return date
+        }
+        const ymdMatch = token.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+        if (ymdMatch) {
+            const [, yyyy, mm, dd] = ymdMatch
+            const date = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd))
+            if (!isNaN(date.getTime())) return date
+        }
+    }
+    return null
+}
+
+/**
+ * Parse a period number from a message string.
+ * Handles: "1st period", "2nd period", "period 3", "3rd", "5th period"
+ */
+function parsePeriodNumber(message) {
+    const lower = message.toLowerCase()
+    // "period 3", "period no 5"
+    let match = lower.match(/period\s*(?:no\.?\s*)?(\d+)/)
+    if (match) return parseInt(match[1])
+    // "3rd period", "1st period", "5th"
+    match = lower.match(/(\d+)\s*(?:st|nd|rd|th)\s*(?:period|class)?/)
+    if (match) return parseInt(match[1])
+    return null
+}
+
+/**
+ * Parse a time from a message string.
+ * Handles: "10:30", "10.30", "10:30 am", "2 pm", "14:00"
+ */
+function parseTime(message) {
+    const lower = message.toLowerCase()
+    // HH:MM or HH.MM with optional am/pm
+    let match = lower.match(/(\d{1,2})[:.:](\d{2})\s*(am|pm)?/)
+    if (match) {
+        let hours = parseInt(match[1])
+        const mins = parseInt(match[2])
+        const ampm = match[3]
+        if (ampm === 'pm' && hours < 12) hours += 12
+        if (ampm === 'am' && hours === 12) hours = 0
+        return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+    }
+    // Just "2 pm" or "2pm"
+    match = lower.match(/(\d{1,2})\s*(am|pm)/)
+    if (match) {
+        let hours = parseInt(match[1])
+        if (match[2] === 'pm' && hours < 12) hours += 12
+        if (match[2] === 'am' && hours === 12) hours = 0
+        return `${String(hours).padStart(2, '0')}:00`
+    }
+    return null
+}
+
+/**
+ * Find a subject name from a message string using aliases.
+ */
+function findSubjectFromMessage(message) {
+    const lower = message.toLowerCase()
+    // Check longer aliases first (more specific)
+    const sorted = Object.entries(SUBJECT_ALIASES).sort((a, b) => b[0].length - a[0].length)
+    for (const [alias, subject] of sorted) {
+        if (lower.includes(alias)) return subject
+    }
+    return null
+}
 
 // Module configurations
 const MODULE_CONFIG = {
@@ -11,144 +143,22 @@ const MODULE_CONFIG = {
         title: 'Time Table',
         icon: Calendar,
         gradient: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)',
-        keywords: {
-            // Separate current and next period keywords
-            current: ['current period', 'current class', 'present period', 'ongoing class', 'what is my current', 'present class'],
-            next: ['next period', 'next class', 'what is my next', 'upcoming period', 'upcoming class'],
-            today: ['today', 'schedule', 'timetable', 'classes', 'all'],
-            next_tomorrow: ['next tomorrow', 'day after tomorrow'],
-            tomorrow: ['tomorrow']
-        }
     },
     result: {
         title: 'Result',
         icon: Award,
         gradient: 'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
-        keywords: {
-            all: ['result', 'marks', 'grade', 'exam', 'score', 'semester', 'show all'],
-        }
     },
     attendance: {
         title: 'Attendance',
         icon: UserCheck,
         gradient: 'linear-gradient(135deg, #10b981 0%, #6ee7b7 100%)',
-        keywords: {
-            today: ['today attendance', 'today\'s attendance'],
-            yesterday: ['yesterday attendance', 'yesterday\'s attendance'],
-            status: ['attendance', 'present', 'absent', 'percentage', 'shortage', 'total', 'my'],
-        }
     },
     notification: {
         title: 'Notification',
         icon: Bell,
         gradient: 'linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%)',
-        keywords: {
-            all: ['notification', 'announcement', 'news', 'update', 'alert', 'show', 'latest'],
-        }
     }
-}
-
-// Demo data for the application
-const DEMO_DATA = {
-    timetable: {
-        today: [
-            { period: 1, time: '09:00 - 09:50', subject: 'Data Structures', staff: 'Dr. Sharma' },
-            { period: 2, time: '10:00 - 10:50', subject: 'Database Systems', staff: 'Prof. Kumar' },
-            { period: 'Interval', time: '10:50 - 11:00', subject: 'Morning Interval', staff: '-' },
-            { period: 3, time: '11:00 - 11:50', subject: 'Computer Networks', staff: 'Dr. Verma' },
-            { period: 4, time: '12:00 - 12:50', subject: 'Operating Systems', staff: 'Prof. Singh' },
-            { period: 'Lunch', time: '12:50 - 14:00', subject: 'Lunch Break', staff: '-' },
-            { period: 5, time: '14:00 - 14:50', subject: 'Software Engineering', staff: 'Dr. Gupta' },
-        ],
-        tomorrow: [
-            { period: 1, time: '09:00 - 09:50', subject: 'Web Development', staff: 'Prof. Patel' },
-            { period: 2, time: '10:00 - 10:50', subject: 'Machine Learning', staff: 'Dr. Reddy' },
-            { period: 'Interval', time: '10:50 - 11:00', subject: 'Morning Interval', staff: '-' },
-            { period: 3, time: '11:00 - 11:50', subject: 'Data Structures Lab', staff: 'Dr. Sharma' },
-            { period: 'Lunch', time: '11:50 - 14:00', subject: 'Lunch Break', staff: '-' }, // Adjusted for Lab
-            { period: 4, time: '14:00 - 15:50', subject: 'Database Lab', staff: 'Prof. Kumar' },
-        ],
-        dayAfterTomorrow: [
-            { period: 1, time: '09:00 - 09:50', subject: 'Cloud Computing', staff: 'Dr. Cloud' },
-            { period: 2, time: '10:00 - 10:50', subject: 'Artificial Intelligence', staff: 'Prof. AI' },
-            { period: 'Interval', time: '10:50 - 11:00', subject: 'Morning Interval', staff: '-' },
-            { period: 3, time: '11:00 - 11:50', subject: 'Project Work', staff: 'Dr. Mentor' }
-        ]
-    },
-    results: [
-        { subject: 'Data Structures', marks: 85, maxMarks: 100, grade: 'A', status: 'Pass' },
-        { subject: 'Database Systems', marks: 78, maxMarks: 100, grade: 'B+', status: 'Pass' },
-        { subject: 'Computer Networks', marks: 92, maxMarks: 100, grade: 'A+', status: 'Pass' },
-        { subject: 'Operating Systems', marks: 71, maxMarks: 100, grade: 'B', status: 'Pass' },
-        { subject: 'Software Engineering', marks: 88, maxMarks: 100, grade: 'A', status: 'Pass' },
-    ],
-    attendance: [
-        { subject: 'Data Structures', total: 45, present: 40, percentage: 88.9 },
-        { subject: 'Database Systems', total: 42, present: 35, percentage: 83.3 },
-        { subject: 'Computer Networks', total: 40, present: 38, percentage: 95.0 },
-        { subject: 'Operating Systems', total: 44, present: 36, percentage: 81.8 },
-    ],
-    // Subject name aliases for keyword matching
-    subjectAliases: {
-        'data structures': ['data structures', 'data structure', 'ds'],
-        'database systems': ['database systems', 'database system', 'dbms', 'database'],
-        'computer networks': ['computer networks', 'computer network', 'cn', 'networks'],
-        'operating systems': ['operating systems', 'operating system', 'os'],
-        'software engineering': ['software engineering', 'se', 'software']
-    },
-    // My personal attendance data
-    myAttendance: {
-        today: { totalClasses: 6, attended: 5, percentage: 83.3 },
-        yesterday: { totalClasses: 5, attended: 5, percentage: 100 }
-    },
-    // Daily attendance records (different for today vs yesterday)
-    dailyAttendance: {
-        today: [
-            { subject: 'Data Structures', status: 'Present', time: '09:00 - 09:50' },
-            { subject: 'Database Systems', status: 'Present', time: '10:00 - 10:50' },
-            { subject: 'Computer Networks', status: 'Absent', time: '11:00 - 11:50' },
-            { subject: 'Operating Systems', status: 'Present', time: '12:00 - 12:50' },
-            { subject: 'Software Engineering', status: 'Present', time: '14:00 - 14:50' },
-            { subject: 'Data Structures Lab', status: 'Present', time: '15:00 - 16:50' }
-        ],
-        yesterday: [
-            { subject: 'Web Development', status: 'Present', time: '09:00 - 09:50' },
-            { subject: 'Machine Learning', status: 'Present', time: '10:00 - 10:50' },
-            { subject: 'Data Structures Lab', status: 'Present', time: '11:00 - 12:50' },
-            { subject: 'Database Lab', status: 'Present', time: '14:00 - 15:50' },
-            { subject: 'Project Work', status: 'Present', time: '16:00 - 16:50' }
-        ]
-    },
-    notifications: [
-        {
-            id: 1,
-            title: 'Mid-Semester Exams Schedule',
-            message: 'Mid-semester examinations will commence from March 15, 2026. Detailed schedule will be posted on the notice board.',
-            date: '2026-02-07',
-            type: 'important'
-        },
-        {
-            id: 2,
-            title: 'Annual Sports Day',
-            message: 'Annual Sports Day will be held on February 20, 2026. All students are encouraged to participate.',
-            date: '2026-02-06',
-            type: 'event'
-        },
-        {
-            id: 3,
-            title: 'Library Book Submission',
-            message: 'All borrowed library books must be returned by February 28, 2026 to avoid late fees.',
-            date: '2026-02-05',
-            type: 'reminder'
-        },
-        {
-            id: 4,
-            title: 'Campus Placement Drive',
-            message: 'Tech Giants Inc. will be conducting a placement drive on March 5, 2026. Interested students should register by February 25.',
-            date: '2026-02-04',
-            type: 'career'
-        },
-    ]
 }
 
 export function getModuleInfo(module) {
@@ -157,7 +167,7 @@ export function getModuleInfo(module) {
 
 export function getWelcomeMessage(module) {
     const messages = {
-        timetable: `👋 Hi! I'm your Time Table assistant.\n\nYou can ask me questions like:\n• "What's my next period?"\n• "Show today's timetable"\n• "Tomorrow's schedule"\n\nHow can I help you today?`,
+        timetable: `👋 Hi! I'm your Time Table assistant.\n\nYou can ask me questions like:\n• "What's my current period?"\n• "What is 3rd period?"\n• "What class at 10:30?"\n• "Show today's timetable"\n• "Tomorrow's schedule"\n• "When is AIML?"\n\nHow can I help you today?`,
         result: `👋 Hi! I'm your Result assistant.\n\nYou can ask me questions like:\n• "Show my exam results"\n• "What are my semester marks?"\n• "My grades"\n\nWhat would you like to know?`,
         attendance: `👋 Hi! I'm your Attendance assistant.\n\nYou can ask me questions like:\n• "What is my attendance?"\n• "Do I have attendance shortage?"\n• "Show attendance percentage"\n\nHow can I assist you?`,
         notification: `👋 Hi! I'm your Notification assistant.\n\nI'll show you the latest college announcements and important updates.\n\nType "show notifications" or just say "latest" to see updates!`
@@ -165,510 +175,446 @@ export function getWelcomeMessage(module) {
     return messages[module] || messages.timetable
 }
 
+/**
+ * Detect intent from a user message for a given module.
+ * Returns an intent string like 'current', 'next', 'today', 'period', 'time', 'subject', etc.
+ */
 function detectIntent(module, message) {
-    const lowerMessage = message.toLowerCase()
-    const config = MODULE_CONFIG[module]
+    const lower = message.toLowerCase()
 
-    if (!config) return 'unknown'
-
-    // Check specific phrases FIRST for better matching (order matters!)
     if (module === 'timetable') {
-        // Check "next tomorrow" / "day after tomorrow" first
-        if (lowerMessage.includes('next tomorrow') || lowerMessage.includes('day after tomorrow')) {
-            return 'next_tomorrow'
-        }
-        // Check "current" keywords before "next" to avoid mixing
-        if (lowerMessage.includes('current') || lowerMessage.includes('present') || lowerMessage.includes('ongoing')) {
+        // ── Multi-word relative day phrases first (most specific) ──
+        if (lower.includes('day before yesterday') || lower.includes('two days ago'))
+            return 'day_before_yesterday'
+        if (lower.includes('day after tomorrow') || lower.includes('overmorrow') || lower.includes('two days from now'))
+            return 'day_after_tomorrow'
+
+        // ── Current period ──
+        if (lower.includes('current') || lower.includes('present') || lower.includes('ongoing')
+            || lower.match(/what('?s| is)\s+(my\s+)?class\s+now/)
+            || lower.includes('right now') || lower.includes('happening now'))
             return 'current'
-        }
-        // Check "next" keywords
-        if (lowerMessage.includes('next')) {
+
+        // ── Next period ──
+        if (lower.match(/next\s+(period|class)/) || lower.includes('upcoming') || lower.includes('after this'))
             return 'next'
+
+        // ── Specific period number ("what is 3rd period", "period 5") ──
+        if (parsePeriodNumber(lower) !== null)
+            return 'period'
+
+        // ── Specific time ("what class at 10:30", "class at 2pm") ──
+        if (parseTime(lower) !== null && (lower.includes('class') || lower.includes('period') || lower.includes('what') || lower.includes('which')))
+            return 'time'
+
+        // ── Subject query ("when is AIML", "AIML class", "what time is RS") ──
+        if (findSubjectFromMessage(lower) !== null &&
+            (lower.includes('when') || lower.includes('what time') || lower.includes('which period') || lower.includes('class')))
+            return 'subject'
+
+        // ── Single-word relative days ──
+        if (lower.includes('yesterday') || lower.includes('previous day'))
+            return 'yesterday'
+        if (lower.includes('tomorrow') || lower.includes('tommorow') || lower.includes('tmrw') || lower.includes('tmr'))
+            return 'tomorrow'
+
+        // ── Specific named day (avoid false positive from "next") ──
+        const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        for (const day of dayNames) {
+            if (lower.includes(day)) return day
         }
+
+        // ── "today", "show timetable", "full schedule", "all classes" ──
+        if (lower.includes('today') || lower.includes('timetable') || lower.includes('schedule')
+            || lower.includes('full') || lower.match(/\ball\b/) || lower.includes('show'))
+            return 'today'
+
+        // ── Default: if it just says "next" alone (e.g. "next period?" without saying "period")
+        if (lower.includes('next'))
+            return 'next'
+
+        // ── Unrecognized → try to be helpful ──
+        return 'unknown'
     }
 
     if (module === 'attendance') {
-        // Check "yesterday" before "today" to avoid false matches
-        if (lowerMessage.includes('yesterday')) {
+        // Future dates
+        if (lower.includes('day after tomorrow') || lower.includes('overmorrow'))
+            return 'future_date'
+        if (lower.includes('tomorrow') || lower.includes('tommorow') || lower.includes('tmrw'))
+            return 'future_date'
+        if (lower.includes('last week') || (lower.includes('last ') && getDayOfWeekFromMessage(lower)))
+            return 'last_week_day'
+        if (lower.includes('next week') || (lower.includes('next') && getDayOfWeekFromMessage(lower)))
+            return 'future_date'
+        const explicitDate = parseExplicitDate(lower)
+        if (explicitDate) {
+            return explicitDate > new Date() ? 'future_date' : 'explicit_date'
+        }
+        if (lower.includes('day before yesterday') || lower.includes('two days ago'))
+            return 'day_before_yesterday'
+        if (lower.includes('yesterday'))
             return 'yesterday'
-        }
-        if (lowerMessage.includes('today')) {
+        if (lower.includes('today'))
             return 'today'
-        }
+        // Day-specific attendance
+        const day = getDayOfWeekFromMessage(lower)
+        if (day) return day
+        // Default: overall attendance
+        return 'status'
     }
 
-    for (const [intent, keywords] of Object.entries(config.keywords)) {
-        if (keywords.some(keyword => lowerMessage.includes(keyword))) {
-            return intent
-        }
-    }
+    if (module === 'result') return 'all'
+    if (module === 'notification') return 'all'
 
     return 'unknown'
 }
 
-/**
- * Get the CURRENTLY ONGOING period based on system time.
- * Returns the period only if time is within the class duration.
- */
-function getCurrentOngoingPeriod() {
-    const now = new Date()
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-    const currentTime = currentHour * 60 + currentMinute
+// ─── Auth & API helpers ──────────────────────────────────────────────
 
-    const schedule = DEMO_DATA.timetable.today
-
-    for (let i = 0; i < schedule.length; i++) {
-        const [startStr, endStr] = schedule[i].time.split(' - ')
-        const [startHour, startMin] = startStr.split(':').map(Number)
-        const [endHour, endMin] = endStr.split(':').map(Number)
-        const startTime = startHour * 60 + startMin
-        const endTime = endHour * 60 + endMin
-
-        // Check if current time is WITHIN this period (strictly ongoing)
-        if (currentTime >= startTime && currentTime < endTime) {
-            return schedule[i]
-        }
-    }
-
-    return null // No ongoing class
+async function getAuthToken() {
+    const token = await auth.currentUser?.getIdToken()
+    if (!token) throw new Error('Not authenticated')
+    return token
 }
 
-/**
- * Get the NEXT UPCOMING period based on system time.
- * Returns the next period that hasn't started yet.
- */
-function getNextUpcomingPeriod() {
-    const now = new Date()
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-    const currentTime = currentHour * 60 + currentMinute
-
-    const schedule = DEMO_DATA.timetable.today
-
-    for (let i = 0; i < schedule.length; i++) {
-        const [startStr] = schedule[i].time.split(' - ')
-        const [startHour, startMin] = startStr.split(':').map(Number)
-        const startTime = startHour * 60 + startMin
-
-        // Find the first period that hasn't started yet
-        if (currentTime < startTime) {
-            return schedule[i]
+async function apiFetch(endpoint) {
+    const token = await getAuthToken()
+    const response = await fetch(endpoint, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
         }
+    })
+    const data = await response.json()
+    if (!response.ok) {
+        if (data && data.message) throw new Error(data.message)
+        throw new Error('Backend request failed')
     }
-
-    return null // No upcoming class
+    return data
 }
+
+// ─── Main entry point ───────────────────────────────────────────────
 
 export async function processMessage(module, message, user) {
     const intent = detectIntent(module, message)
+    const lower = message.toLowerCase()
 
-    // Try to fetch from backend first
     try {
-        const token = localStorage.getItem('token')
-        let endpoint = ''
-
-        switch (module) {
-            case 'timetable':
-                if (intent === 'next') {
-                    endpoint = '/api/timetable/next'
-                } else if (intent === 'today') {
-                    endpoint = '/api/timetable/query?day=today'
-                } else if (intent === 'tomorrow') {
-                    endpoint = '/api/timetable/query?day=tomorrow'
-                } else if (intent === 'next_tomorrow') {
-                    endpoint = '/api/timetable/query?day=next_tomorrow'
-                } else if (intent === 'yesterday') {
-                    endpoint = '/api/timetable/query?day=yesterday'
-                } else {
-                    endpoint = '/api/timetable/query?day=today'
-                }
-                break
-            case 'result':
-                endpoint = '/api/results'
-                break
-            case 'attendance':
-                endpoint = '/api/attendance'
-                break
-            case 'notification':
-                endpoint = '/api/notifications'
-                break
-        }
-
-        const response = await fetch(endpoint, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        // ── TIMETABLE ──
+        if (module === 'timetable') {
+            // Current / Next period
+            if (intent === 'current' || intent === 'next') {
+                const data = await apiFetch('/api/timetable/next')
+                return formatCurrentNext(intent, data)
             }
-        })
 
-        if (response.ok) {
-            const data = await response.json()
-            return formatResponse(module, intent, data)
+            // Specific period number
+            if (intent === 'period') {
+                const periodNo = parsePeriodNumber(lower)
+                const data = await apiFetch('/api/timetable/query?day=today')
+                return formatPeriodQuery(periodNo, data)
+            }
+
+            // Specific time
+            if (intent === 'time') {
+                const time = parseTime(lower)
+                const data = await apiFetch('/api/timetable/query?day=today')
+                return formatTimeQuery(time, data)
+            }
+
+            // Subject query
+            if (intent === 'subject') {
+                const subject = findSubjectFromMessage(lower)
+                const data = await apiFetch('/api/timetable/query?day=today')
+                return formatSubjectQuery(subject, data)
+            }
+
+            // Day-based queries
+            if (intent === 'unknown') {
+                // Try to help the user
+                return {
+                    text: `🤔 I didn't quite understand that. Try asking:\n• "What's my current period?"\n• "What is 3rd period?"\n• "What class at 10:30?"\n• "Show today's timetable"\n• "Tomorrow's schedule"\n• "When is AIML?"`,
+                    data: null
+                }
+            }
+
+            // Map intent to API query parameter
+            let dayParam = intent
+            if (['today', 'yesterday', 'tomorrow', 'day_after_tomorrow', 'day_before_yesterday', 'next_tomorrow'].includes(intent)) {
+                dayParam = intent
+            }
+            // Named days (monday, tuesday, etc.) → pass directly
+            const data = await apiFetch(`/api/timetable/query?day=${dayParam}`)
+            return formatDayTimetable(intent, data)
         }
+
+        // ── RESULT ──
+        if (module === 'result') {
+            const data = await apiFetch('/api/results')
+            return formatResults(data)
+        }
+
+        // ── ATTENDANCE ──
+        if (module === 'attendance') {
+            if (intent === 'future_date') {
+                return {
+                    text: '⚠️ **Attendance is not available for future dates.**\n\nI can only show attendance for today or past dates. Try asking:\n• "Today\'s attendance"\n• "Yesterday\'s attendance"\n• "Monday attendance"',
+                    data: null
+                }
+            }
+            if (intent === 'explicit_date') {
+                const parsedDate = parseExplicitDate(lower)
+                if (parsedDate) {
+                    const yyyy = parsedDate.getFullYear()
+                    const mm = String(parsedDate.getMonth() + 1).padStart(2, '0')
+                    const dd = String(parsedDate.getDate()).padStart(2, '0')
+                    const data = await apiFetch(`/api/attendance/daily/${yyyy}-${mm}-${dd}`)
+                    return formatDailyAttendance(data)
+                }
+            }
+            if (intent === 'last_week_day') {
+                const data = await apiFetch(`/api/attendance/daily?day=${encodeURIComponent(lower.trim())}`)
+                return formatDailyAttendance(data)
+            }
+            if (['today', 'yesterday', 'day_before_yesterday'].includes(intent)) {
+                const data = await apiFetch(`/api/attendance/daily?day=${intent}`)
+                return formatDailyAttendance(data)
+            }
+            // Named days
+            const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+            if (dayNames.includes(intent)) {
+                const data = await apiFetch(`/api/attendance/daily?day=${intent}`)
+                return formatDailyAttendance(data)
+            }
+            // Overall attendance
+            const data = await apiFetch('/api/attendance')
+            return formatOverallAttendance(data)
+        }
+
+        // ── NOTIFICATION ──
+        if (module === 'notification') {
+            const data = await apiFetch('/api/notifications')
+            return formatNotifications(data)
+        }
+
     } catch (error) {
-        // Backend not available, use demo data
-        console.log('Using demo data')
-    }
-
-    // Use demo data
-    return generateDemoResponse(module, intent, message)
-}
-
-function generateDemoResponse(module, intent, message) {
-    switch (module) {
-        case 'timetable':
-            return handleTimetableQuery(intent, message)
-        case 'result':
-            return handleResultQuery(intent, message)
-        case 'attendance':
-            return handleAttendanceQuery(intent, message)
-        case 'notification':
-            return handleNotificationQuery(intent)
-        default:
-            return {
-                text: "I'm not sure how to help with that. Please try a different question.",
-                data: null
-            }
-    }
-}
-
-function handleTimetableQuery(intent, message) {
-    // First check if user is asking for a SPECIFIC TIME slot
-    if (message) {
-        const timeMatch = findClassByTime(message)
-        if (timeMatch) {
-            return {
-                text: `📚 **Class at ${timeMatch.time}:**\n\n**${timeMatch.subject}**\nPeriod: ${timeMatch.period}\nFaculty: ${timeMatch.staff}`,
-                data: null
-            }
-        }
-
-        // Check if user is asking for a SPECIFIC PERIOD number
-        const periodMatch = findClassByPeriod(message)
-        if (periodMatch) {
-            return {
-                text: `📚 **Period ${periodMatch.period}:**\n\n**${periodMatch.subject}**\nTime: ${periodMatch.time}\nFaculty: ${periodMatch.staff}`,
-                data: null
-            }
-        }
-    }
-
-    // Handle CURRENT period request (user wants the ongoing class)
-    if (intent === 'current') {
-        const current = getCurrentOngoingPeriod()
-
-        if (current) {
-            return {
-                text: `📚 **Your Current Class:**\n\n**${current.subject}**\nTime: ${current.time}\nFaculty: ${current.staff}`,
-                data: null
-            }
-        } else {
-            return {
-                text: "📭 You currently have no ongoing class.",
-                data: null
-            }
-        }
-    }
-
-    // Handle NEXT period request (user wants the upcoming class)
-    if (intent === 'next') {
-        const next = getNextUpcomingPeriod()
-
-        if (next) {
-            return {
-                text: `📅 **Your Next Class:**\n\n**${next.subject}**\nTime: ${next.time}\nFaculty: ${next.staff}`,
-                data: null
-            }
-        } else {
-            return {
-                text: "🎉 No more classes for today! Enjoy your free time.",
-                data: null
-            }
-        }
-    }
-
-    if (intent === 'tomorrow') {
-        const schedule = DEMO_DATA.timetable.tomorrow
+        console.error('Backend error:', error.message)
         return {
-            text: "📅 Here's your schedule for tomorrow:",
-            data: {
-                type: 'table',
-                headers: ['Period', 'Time', 'Subject', 'Faculty'],
-                rows: schedule.map(s => [s.period, s.time, s.subject, s.staff])
-            }
+            text: `⚠️ **Could not fetch data from server.**\n\n${error.message || 'Please make sure the backend is running and try again.'}`,
+            data: null
         }
     }
 
-    if (intent === 'next_tomorrow') {
-        const schedule = DEMO_DATA.timetable.dayAfterTomorrow
-        return {
-            text: "📅 Here's your schedule for the day after tomorrow:",
-            data: {
-                type: 'table',
-                headers: ['Period', 'Time', 'Subject', 'Faculty'],
-                rows: schedule.map(s => [s.period, s.time, s.subject, s.staff])
-            }
-        }
-    }
-
-    // Default: Today's timetable
-    const schedule = DEMO_DATA.timetable.today
     return {
-        text: "📅 Here's your timetable for today:",
-        data: {
-            type: 'table',
-            headers: ['Period', 'Time', 'Subject', 'Faculty'],
-            rows: schedule.map(s => [s.period, s.time, s.subject, s.staff])
-        }
+        text: "🤔 I'm not sure how to help with that. Try rephrasing your question!",
+        data: null
     }
 }
 
-/**
- * Find class by specific time from user message.
- * Matches time patterns like "10:00", "10:00 - 10:50", "09:00"
- */
-function findClassByTime(message) {
-    const schedule = DEMO_DATA.timetable.today
+// ─── Timetable formatters ────────────────────────────────────────────
 
-    // Try to extract time pattern from message (HH:MM format)
-    const timeRegex = /(\d{1,2}:\d{2})/g
-    const matches = message.match(timeRegex)
+function formatCurrentNext(intent, data) {
+    const period = data.period
+    if (period) {
+        const emoji = data.isCurrent ? '📚' : '📅'
+        const label = data.isCurrent ? 'Current Class' : 'Next Class'
+        return {
+            text: `${emoji} **Your ${label}:**\n\n🔹 **${period.subject}**\n⏰ Time: ${period.time}\n👨‍🏫 Faculty: ${period.staff}\n📌 Period: ${period.period}`,
+            data: null
+        }
+    }
+    return {
+        text: data.message || '📭 No more classes today.',
+        data: null
+    }
+}
 
-    if (matches && matches.length > 0) {
-        const searchTime = matches[0] // Use first time found
+function formatPeriodQuery(periodNo, data) {
+    if (!Array.isArray(data)) {
+        return { text: data.message || '📭 No timetable available for today.', data: null }
+    }
+    const match = data.find(s => s.period === periodNo)
+    if (match) {
+        return {
+            text: `📚 **Period ${periodNo} Today:**\n\n🔹 **${match.subject}**\n⏰ Time: ${match.time}\n👨‍🏫 Faculty: ${match.staff}`,
+            data: null
+        }
+    }
+    return {
+        text: `📭 No class scheduled for period ${periodNo} today.\n\nToday's periods: ${data.map(s => s.period).join(', ')}`,
+        data: null
+    }
+}
 
-        // Look for a class that contains this time
-        for (const cls of schedule) {
-            if (cls.time.includes(searchTime)) {
-                return cls
+function formatTimeQuery(time, data) {
+    if (!Array.isArray(data)) {
+        return { text: data.message || '📭 No timetable available for today.', data: null }
+    }
+    // Find the class that spans the given time
+    const match = data.find(s => {
+        const [startStr, endStr] = s.time.split(' - ')
+        return startStr && endStr && time >= startStr.trim() && time < endStr.trim()
+    })
+    if (match) {
+        return {
+            text: `📚 **Class at ${time}:**\n\n🔹 **${match.subject}**\n⏰ Time: ${match.time}\n👨‍🏫 Faculty: ${match.staff}\n📌 Period: ${match.period}`,
+            data: null
+        }
+    }
+    // Find the next class after the given time
+    const nextClass = data.find(s => {
+        const startStr = s.time.split(' - ')[0]
+        return startStr && startStr.trim() > time
+    })
+    if (nextClass) {
+        return {
+            text: `📭 No class at ${time}.\n\n📅 **Next class after ${time}:**\n🔹 **${nextClass.subject}**\n⏰ Time: ${nextClass.time}\n👨‍🏫 Faculty: ${nextClass.staff}`,
+            data: null
+        }
+    }
+    return {
+        text: `📭 No class at or after ${time} today.`,
+        data: null
+    }
+}
+
+function formatSubjectQuery(subject, data) {
+    if (!Array.isArray(data)) {
+        return { text: data.message || '📭 No timetable available for today.', data: null }
+    }
+    const matches = data.filter(s =>
+        s.subject && s.subject.toLowerCase().includes(subject.toLowerCase())
+    )
+    if (matches.length > 0) {
+        let text = `📚 **${subject} Today:**\n\n`
+        matches.forEach(m => {
+            text += `🔹 **Period ${m.period}** — ${m.time}\n   👨‍🏫 ${m.staff}\n`
+        })
+        return { text: text.trim(), data: null }
+    }
+    return {
+        text: `📭 **${subject}** is not scheduled for today.\n\nTry asking "show timetable" to see all classes.`,
+        data: null
+    }
+}
+
+function formatDayTimetable(intent, data) {
+    const labelMap = {
+        today: "today's timetable",
+        yesterday: "yesterday's timetable",
+        tomorrow: "tomorrow's schedule",
+        day_after_tomorrow: "the day after tomorrow's schedule",
+        next_tomorrow: "the day after tomorrow's schedule",
+        day_before_yesterday: "the day before yesterday's timetable",
+    }
+    const label = labelMap[intent] || `the timetable for ${intent.charAt(0).toUpperCase() + intent.slice(1)}`
+
+    if (Array.isArray(data)) {
+        if (data.length === 0) {
+            return { text: `📭 No classes scheduled for ${label}.`, data: null }
+        }
+        return {
+            text: `📅 Here is ${label}:`,
+            data: {
+                type: 'table',
+                headers: ['Period', 'Time', 'Subject', 'Faculty'],
+                rows: data.map(s => [s.period, s.time, s.subject, s.staff])
             }
         }
     }
 
-    return null
+    if (data.message) {
+        return { text: `📭 ${data.message}`, data: null }
+    }
+
+    return { text: `📭 No data available for ${label}.`, data: null }
 }
 
-/**
- * Find class by period number from user message.
- * Matches patterns like "third period", "period 3", "3rd period", "1st class"
- */
-function findClassByPeriod(message) {
-    const schedule = DEMO_DATA.timetable.today
-    const lowerMessage = message.toLowerCase()
+// ─── Result formatter ────────────────────────────────────────────────
 
-    // Map of word numbers to digits
-    const wordToNum = {
-        'first': 1, '1st': 1,
-        'second': 2, '2nd': 2,
-        'third': 3, '3rd': 3,
-        'fourth': 4, '4th': 4,
-        'fifth': 5, '5th': 5,
-        'sixth': 6, '6th': 6,
-        'seventh': 7, '7th': 7,
-        'eighth': 8, '8th': 8
-    }
-
-    // Check for word-based period numbers (e.g., "third period")
-    for (const [word, num] of Object.entries(wordToNum)) {
-        if (lowerMessage.includes(word)) {
-            const cls = schedule.find(s => s.period === num)
-            if (cls) return cls
-        }
-    }
-
-    // Check for digit-based period numbers (e.g., "period 3", "3 period")
-    const digitMatch = lowerMessage.match(/period\s*(\d+)|(\d+)\s*(?:st|nd|rd|th)?\s*period/)
-    if (digitMatch) {
-        const periodNum = parseInt(digitMatch[1] || digitMatch[2])
-        const cls = schedule.find(s => s.period === periodNum)
-        if (cls) return cls
-    }
-
-    return null
-}
-
-/**
- * Find subject from user message using aliases.
- * Matches against subject aliases for flexible keyword detection.
- */
-function findSubjectFromMessage(message) {
-    const lowerMessage = message.toLowerCase()
-    const aliases = DEMO_DATA.subjectAliases
-    const results = DEMO_DATA.results
-
-    for (const [subjectName, aliasList] of Object.entries(aliases)) {
-        for (const alias of aliasList) {
-            if (lowerMessage.includes(alias)) {
-                // Find the matching result
-                return results.find(r => r.subject.toLowerCase() === subjectName)
-            }
-        }
-    }
-
-    return null
-}
-
-function handleResultQuery(intent, message) {
-    const results = DEMO_DATA.results
-
-    // Try to find specific subject from message using aliases
-    if (message) {
-        const specificSubject = findSubjectFromMessage(message)
-
-        if (specificSubject) {
-            return {
-                text: `📊 **Result for ${specificSubject.subject}:**`,
-                data: {
-                    type: 'table',
-                    headers: ['Subject', 'Marks', 'Grade', 'Status'],
-                    rows: [[specificSubject.subject, `${specificSubject.marks}/${specificSubject.maxMarks}`, specificSubject.grade, specificSubject.status]]
-                }
-            }
-        }
-    }
-
-    // Default: Show all results
-    const totalMarks = results.reduce((sum, r) => sum + r.marks, 0)
-    const average = (totalMarks / results.length).toFixed(1)
+function formatResults(data) {
+    const results = data.results || []
+    const average = data.average || '0.0'
 
     return {
         text: `📊 **Your Exam Results:**\n\n**Overall Average:** ${average}%`,
         data: {
             type: 'table',
-            headers: ['Subject', 'Marks', 'Grade', 'Status'],
-            rows: results.map(r => [r.subject, `${r.marks}/${r.maxMarks}`, r.grade, r.status])
-        }
-    }
-}
-
-function handleAttendanceQuery(intent, message) {
-    const attendance = DEMO_DATA.attendance
-    const myAttendance = DEMO_DATA.myAttendance
-    const dailyAttendance = DEMO_DATA.dailyAttendance
-
-    // Handle YESTERDAY's attendance
-    if (intent === 'yesterday') {
-        const yesterdayData = dailyAttendance.yesterday
-        const myYesterday = myAttendance.yesterday
-
-        return {
-            text: `📅 **Yesterday's Attendance:**\n\n**Your Attendance:** ${myYesterday.attended}/${myYesterday.totalClasses} (${myYesterday.percentage}%)`,
-            data: {
-                type: 'table',
-                headers: ['Subject', 'Status', 'Time'],
-                rows: yesterdayData.map(a => [a.subject, a.status, a.time])
-            }
-        }
-    }
-
-    // Handle TODAY's attendance
-    if (intent === 'today') {
-        const todayData = dailyAttendance.today
-        const myToday = myAttendance.today
-
-        return {
-            text: `📅 **Today's Attendance:**\n\n**Your Attendance:** ${myToday.attended}/${myToday.totalClasses} (${myToday.percentage}%)`,
-            data: {
-                type: 'table',
-                headers: ['Subject', 'Status', 'Time'],
-                rows: todayData.map(a => [a.subject, a.status, a.time])
-            }
-        }
-    }
-
-    // Default: Overall attendance with personal stats
-    const totalClasses = attendance.reduce((sum, a) => sum + a.total, 0)
-    const totalPresent = attendance.reduce((sum, a) => sum + a.present, 0)
-    const overallPercentage = ((totalPresent / totalClasses) * 100).toFixed(1)
-
-    const hasShortage = attendance.some(a => a.percentage < 75)
-    const shortageSubjects = attendance.filter(a => a.percentage < 75)
-
-    let statusMessage = `📊 **Your Attendance Summary:**\n\n`
-    statusMessage += `📌 **Total Classes:** ${totalClasses}\n`
-    statusMessage += `✅ **Classes Attended:** ${totalPresent}\n`
-    statusMessage += `📈 **Overall Attendance:** ${overallPercentage}%\n\n`
-
-    if (hasShortage) {
-        statusMessage += `⚠️ **Shortage Alert:** Low attendance in ${shortageSubjects.length} subject(s).`
-    } else {
-        statusMessage += `✅ No attendance shortage. Keep it up!`
-    }
-
-    return {
-        text: statusMessage,
-        data: {
-            type: 'table',
-            headers: ['Subject', 'Present', 'Total', 'Percentage'],
-            rows: attendance.map(a => [
-                a.subject,
-                a.present,
-                a.total,
-                `${a.percentage.toFixed(1)}%`
+            headers: ['Subject Code', 'Subject Name', 'Marks', 'Grade', 'Status'],
+            rows: results.map(r => [
+                r.subjectCode,
+                r.subjectName,
+                r.marks,
+                r.grade,
+                r.status
             ])
         }
     }
 }
 
-function handleNotificationQuery(intent) {
-    const notifications = DEMO_DATA.notifications
+// ─── Attendance formatters ───────────────────────────────────────────
 
-    let text = "📢 **Latest Notifications:**\n\n"
+function formatDailyAttendance(data) {
+    if (data.error && data.message) {
+        return { text: `⚠️ **${data.message}**`, data: null }
+    }
 
-    notifications.slice(0, 3).forEach((n, i) => {
-        text += `**${i + 1}. ${n.title}**\n${n.message}\n📅 ${n.date}\n\n`
-    })
+    if (data.dayOfWeek !== undefined) {
+        const dayOfWeek = data.dayOfWeek || ''
+        const date = data.date || ''
+        const attended = data.attended || 0
+        const totalClasses = data.totalClasses || 0
+        const percentage = data.percentage || '0.0'
+        const records = data.records || []
+
+        let statusEmoji = '✅'
+        if (parseFloat(percentage) < 75) statusEmoji = '⚠️'
+        if (totalClasses === 0) statusEmoji = '📭'
+
+        const headerText = totalClasses === 0
+            ? `📅 **No attendance records found for ${dayOfWeek}, ${date}.**\n\nThis could be a holiday or no classes were scheduled.`
+            : `📅 **Attendance for ${dayOfWeek}, ${date}:**\n\n${statusEmoji} **Your Attendance:** ${attended}/${totalClasses} (${percentage}%)`
+
+        return {
+            text: headerText,
+            data: totalClasses > 0 ? {
+                type: 'table',
+                headers: ['Period', 'Subject', 'Status', 'Time'],
+                rows: records.map(r => [r.period, r.subject, r.status, r.time])
+            } : null
+        }
+    }
+
+    return formatOverallAttendance(data)
+}
+
+function formatOverallAttendance(data) {
+    const attendance = data.attendance || []
+    const overallPercentage = data.overallPercentage || '0.0'
 
     return {
-        text: text.trim(),
-        data: null
+        text: `📊 **Your Attendance Summary:**\n\n📈 **Overall Attendance:** ${overallPercentage}%`,
+        data: {
+            type: 'table',
+            headers: ['Subject', 'Present', 'Total', 'Percentage'],
+            rows: attendance.map(a => [a.subject, a.present, a.total, a.percentage])
+        }
     }
 }
 
-function formatResponse(module, intent, data) {
-    if (module === 'timetable') {
-        if (intent === 'next' || intent === 'current') {
-            const period = data.period
-            // Handle API response format
-            if (period) {
-                return {
-                    text: data.isCurrent
-                        ? `📚 **Your Current Class:**\n\n**${period.subject}**\nTime: ${period.time}\nFaculty: ${period.staff}`
-                        : `📅 **Your Next Class:**\n\n**${period.subject}**\nTime: ${period.time}\nFaculty: ${period.staff}`,
-                    data: null
-                }
-            }
-            return {
-                text: data.message || "No class found.",
-                data: null
-            }
-        }
+// ─── Notification formatter ──────────────────────────────────────────
 
-        // Handle list of timetable entries (today, tomorrow, etc.)
-        if (Array.isArray(data)) {
-            return {
-                text: `📅 Here is the timetable:`,
-                data: {
-                    type: 'table',
-                    headers: ['Period', 'Time', 'Subject', 'Faculty'],
-                    rows: data.map(s => [s.period, s.time, s.subject, s.staff])
-                }
-            }
+function formatNotifications(data) {
+    if (Array.isArray(data)) {
+        if (data.length === 0) {
+            return { text: '📭 **No notifications at this time.**', data: null }
         }
-
-        // Handle "No timetable available" message
-        if (data.message) {
-            return {
-                text: `📭 ${data.message}`,
-                data: null
-            }
-        }
+        let text = "📢 **Latest Notifications:**\n\n"
+        data.slice(0, 5).forEach((n, i) => {
+            text += `**${i + 1}. ${n.title}**\n${n.message}\n📅 ${n.date || n.createdAt || ''}\n\n`
+        })
+        return { text: text.trim(), data: null }
     }
-
-    // Default formatting
-    return {
-        text: "Here's the information from the server:",
-        data: data
-    }
+    return { text: '📭 No notification data available.', data: null }
 }

@@ -92,20 +92,50 @@ INSERT INTO students (name, email, password, role) VALUES
 ('John Doe', 'student@college.edu', '$2a$10$rBVHPQqMBXK2vRNs5PMgKOp8FXNT1vQXu6aEBPh8rYXtL7VwBCqHm', 'STUDENT'),
 ('Admin User', 'admin@college.edu', '$2a$10$rBVHPQqMBXK2vRNs5PMgKOp8FXNT1vQXu6aEBPh8rYXtL7VwBCqHm', 'ADMIN');
 
+-- Insert timetable for student 1 (TUESDAY)
+INSERT INTO timetable (student_id, day_of_week, period_no, start_time, end_time, subject, staff_name) VALUES
+(1, 'TUESDAY', 1, '09:00:00', '09:50:00', '22EC601', 'TBA'),
+(1, 'TUESDAY', 2, '10:00:00', '10:50:00', '22EC602', 'TBA'),
+(1, 'TUESDAY', 3, '11:00:00', '12:50:00', '22EC601 A1 / 22EC602 A2 (LAB)', 'LAB'),
+(1, 'TUESDAY', 5, '14:00:00', '14:50:00', 'LIBRARY', '-'),
+(1, 'TUESDAY', 6, '15:00:00', '15:50:00', '22EC981', 'TBA'),
+(1, 'TUESDAY', 7, '16:00:00', '16:50:00', 'SPORTS / 22CB003', '-');
+
+-- Insert timetable for student 1 (WEDNESDAY)
+INSERT INTO timetable (student_id, day_of_week, period_no, start_time, end_time, subject, staff_name) VALUES
+(1, 'WEDNESDAY', 1, '09:00:00', '09:50:00', '22EC602', 'TBA'),
+(1, 'WEDNESDAY', 2, '10:00:00', '10:50:00', '22EC919', 'TBA'),
+(1, 'WEDNESDAY', 3, '11:00:00', '11:50:00', '22EC913', 'TBA'),
+(1, 'WEDNESDAY', 4, '12:00:00', '12:50:00', '22EC601', 'TBA'),
+(1, 'WEDNESDAY', 5, '14:00:00', '14:50:00', '22EC981', 'TBA'),
+(1, 'WEDNESDAY', 6, '15:00:00', '16:50:00', '22EC919 A1 / 22EC611 A2 (LAB)', 'LAB');
+
+-- Insert timetable for student 1 (THURSDAY)
+INSERT INTO timetable (student_id, day_of_week, period_no, start_time, end_time, subject, staff_name) VALUES
+(1, 'THURSDAY', 1, '09:00:00', '09:50:00', '22CB003', 'TBA'),
+(1, 'THURSDAY', 2, '10:00:00', '10:50:00', '22EC601', 'TBA'),
+(1, 'THURSDAY', 3, '11:00:00', '11:50:00', '22EC913', 'TBA'),
+(1, 'THURSDAY', 4, '12:00:00', '13:50:00', '22EC919 A2 / 22EC611 A1 (LAB)', 'LAB'),
+(1, 'THURSDAY', 6, '15:00:00', '16:50:00', 'PLACEMENT', '-');
+
 -- Insert timetable for student 1 (FRIDAY)
 INSERT INTO timetable (student_id, day_of_week, period_no, start_time, end_time, subject, staff_name) VALUES
-(1, 'FRIDAY', 1, '09:00:00', '09:50:00', 'Data Structures', 'Dr. Sharma'),
-(1, 'FRIDAY', 2, '10:00:00', '10:50:00', 'Database Systems', 'Prof. Kumar'),
-(1, 'FRIDAY', 3, '11:00:00', '11:50:00', 'Computer Networks', 'Dr. Verma'),
-(1, 'FRIDAY', 4, '12:00:00', '12:50:00', 'Operating Systems', 'Prof. Singh'),
-(1, 'FRIDAY', 5, '14:00:00', '14:50:00', 'Software Engineering', 'Dr. Gupta');
+(1, 'FRIDAY', 1, '09:00:00', '09:50:00', '22CB003', 'TBA'),
+(1, 'FRIDAY', 2, '10:00:00', '10:50:00', '22EC919', 'TBA'),
+(1, 'FRIDAY', 3, '11:00:00', '11:50:00', '22EC913', 'TBA'),
+(1, 'FRIDAY', 4, '12:00:00', '12:50:00', '22EC981', 'TBA'),
+(1, 'FRIDAY', 5, '14:00:00', '14:50:00', '22EC602', 'TBA'),
+(1, 'FRIDAY', 6, '15:00:00', '16:50:00', '22EC601 A2 / 22EC602 A1 (LAB)', 'LAB');
 
--- Insert timetable for student 1 (MONDAY)
+-- Insert timetable for student 1 (SATURDAY)
 INSERT INTO timetable (student_id, day_of_week, period_no, start_time, end_time, subject, staff_name) VALUES
-(1, 'MONDAY', 1, '09:00:00', '09:50:00', 'Web Development', 'Prof. Patel'),
-(1, 'MONDAY', 2, '10:00:00', '10:50:00', 'Machine Learning', 'Dr. Reddy'),
-(1, 'MONDAY', 3, '11:00:00', '11:50:00', 'Data Structures Lab', 'Dr. Sharma'),
-(1, 'MONDAY', 4, '14:00:00', '15:50:00', 'Database Lab', 'Prof. Kumar');
+(1, 'SATURDAY', 1, '09:00:00', '09:50:00', '22EC919', 'TBA'),
+(1, 'SATURDAY', 2, '10:00:00', '10:50:00', '22EC601', 'TBA'),
+(1, 'SATURDAY', 3, '11:00:00', '11:50:00', '22EC913', 'TBA'),
+(1, 'SATURDAY', 4, '12:00:00', '12:50:00', '22EC919', 'TBA'),
+(1, 'SATURDAY', 5, '14:00:00', '14:50:00', '22EC602', 'TBA'),
+(1, 'SATURDAY', 6, '15:00:00', '15:50:00', '22CB003', 'TBA'),
+(1, 'SATURDAY', 7, '16:00:00', '16:50:00', 'PLACEMENT', '-');
 
 -- Insert results
 INSERT INTO results (student_id, subject, marks, max_marks, grade, semester) VALUES

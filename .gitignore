@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+backend/target/
+*.jar
+
+# Environment / secrets
+.env
+.env.local
+.env.production
+backend/src/main/resources/serviceAccountKey.json
+
+# Maven binary distribution (large)
+backend/tools/
+apache-maven-*/
+maven-bin.zip
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Misc
+*.log
+relative_day_test.html

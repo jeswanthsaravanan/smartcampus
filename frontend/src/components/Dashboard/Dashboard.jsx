@@ -8,7 +8,9 @@ import {
     LogOut,
     MessageSquare,
     ChevronRight,
-    GraduationCap
+    GraduationCap,
+    User,
+    Shield
 } from 'lucide-react'
 import './Dashboard.css'
 
@@ -71,16 +73,38 @@ function Dashboard() {
                         </div>
                         <div className="header-info">
                             <h1>Smart College Portal</h1>
-                            <p>Welcome back, {user?.name || 'Student'}</p>
+                            <p>Welcome back, {user?.firstName || user?.name || 'Student'}</p>
                         </div>
                     </div>
-                    <button
-                        className="logout-btn btn-secondary"
-                        onClick={handleLogout}
-                    >
-                        <LogOut size={18} />
-                        <span>Logout</span>
-                    </button>
+                    <div className="header-right">
+                        {user?.role === 'ADMIN' && (
+                            <button
+                                className="admin-link-btn"
+                                onClick={() => navigate('/admin')}
+                                title="Admin Panel"
+                            >
+                                <Shield size={18} />
+                            </button>
+                        )}
+                        <button
+                            className="profile-avatar-btn"
+                            onClick={() => navigate('/profile')}
+                            title="View Profile"
+                        >
+                            {user?.photoUrl ? (
+                                <img src={user.photoUrl} alt="Profile" referrerPolicy="no-referrer" />
+                            ) : (
+                                <User size={20} />
+                            )}
+                        </button>
+                        <button
+                            className="logout-btn btn-secondary"
+                            onClick={handleLogout}
+                        >
+                            <LogOut size={18} />
+                            <span>Logout</span>
+                        </button>
+                    </div>
                 </div>
             </header>
 
