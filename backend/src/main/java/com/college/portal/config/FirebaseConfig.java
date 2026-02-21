@@ -27,15 +27,20 @@ public class FirebaseConfig {
         InputStream serviceAccount = getClass().getClassLoader()
                 .getResourceAsStream(credentialsPath);
 
-        if (serviceAccount == null) {
-            throw new IllegalStateException(
-                    "Firebase serviceAccountKey.json not found in classpath. " +
-                            "Place it at: src/main/resources/serviceAccountKey.json");
+        FirebaseOptions options;
+        if (serviceAccount != null) {
+            System.out.println("Using local serviceAccountKey.json for Firebase...");
+            options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .build();
+        } else {
+            System.out.println(
+                    "No serviceAccountKey.json found. Falling back to Google Application Default Credentials (Cloud Run)...");
+            options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.getApplicationDefault())
+                    .setProjectId("smartcampus0512") // explicitly set project ID for Cloud Run default credentials
+                    .build();
         }
-
-        FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                .build();
 
         return FirebaseApp.initializeApp(options);
     }

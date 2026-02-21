@@ -2,6 +2,7 @@ package com.college.portal.controller;
 
 import com.college.portal.model.*;
 import com.college.portal.repository.*;
+import com.google.cloud.firestore.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,6 +27,7 @@ public class AdminController {
     private final ResultRepository resultRepository;
     private final AttendanceRepository attendanceRepository;
     private final NotificationRepository notificationRepository;
+    private final Firestore firestore;
 
     // ---- Helper: verify admin role ----
     private boolean isAdmin(Authentication auth) {
@@ -491,5 +493,39 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // ============================================================
+    // CLEAR ALL DATA
+    // ============================================================
+    @DeleteMapping("/clear-all")
+    public ResponseEntity<?> clearAllData(Authentication auth) {
+        if (!isAdmin(auth))
+            return forbidden();
+        try {
+            int total = 0;
+            total += clearCollection("timetable");
+            total += clearCollection("results");
+            total += clearCollection("attendance");
+            total += clearCollection("notifications");
+            total += clearCollection("dailyAttendance");
+            return ResponseEntity.ok(Map.of(
+                    "message", "All data cleared!",
+                    "deletedRecords", total));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    private int clearCollection(String collectionName) throws Exception {
+        CollectionReference collection = firestore.collection(collectionName);
+        List<QueryDocumentSnapshot> docs = collection.get().get().getDocuments();
+        WriteBatch batch = firestore.batch();
+        for (QueryDocumentSnapshot doc : docs) {
+            batch.delete(doc.getReference());
+        }
+        if (!docs.isEmpty())
+            batch.commit().get();
+        return docs.size();
     }
 }

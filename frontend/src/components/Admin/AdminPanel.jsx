@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
     ArrowLeft, Shield, Calendar, Users, Plus, Pencil, Trash2,
     Save, X, Loader2, CheckCircle, AlertCircle, ChevronDown,
-    Award, UserCheck, Bell, Database, CheckSquare, Square
+    Award, UserCheck, Bell, Database, CheckSquare, Square, AlertTriangle
 } from 'lucide-react'
 import './AdminPanel.css'
 
@@ -32,6 +32,7 @@ function AdminPanel() {
     const [toast, setToast] = useState(null)
     const [setupAvailable, setSetupAvailable] = useState(false)
     const [seeding, setSeeding] = useState(false)
+    const [clearing, setClearing] = useState(false)
 
     // --- Timetable state ---
     const [entries, setEntries] = useState([])
@@ -435,6 +436,26 @@ function AdminPanel() {
                     }}>
                     {seeding ? <Loader2 size={16} className="spin" /> : <Database size={16} />}
                     {seeding ? 'Seeding...' : 'Seed Data'}
+                </button>
+                <button className="btn-danger" disabled={clearing}
+                    onClick={async () => {
+                        const confirmation = prompt('⚠️ This will DELETE ALL DATA (timetable, results, attendance, notifications).\n\nType CLEAR ALL to confirm:')
+                        if (confirmation !== 'CLEAR ALL') return
+                        setClearing(true)
+                        try {
+                            const res = await apiCall('/api/admin/clear-all', { method: 'DELETE' })
+                            const data = await res.json()
+                            if (res.ok) {
+                                showToast('success', `🗑️ ${data.message} (${data.deletedRecords} records removed)`)
+                                fetchEntries(); fetchResults(); fetchAttendance(); fetchNotifications(); fetchUsers()
+                            } else {
+                                showToast('error', data.error || 'Clear failed')
+                            }
+                        } catch (e) { showToast('error', 'Clear failed: ' + e.message) }
+                        setClearing(false)
+                    }}>
+                    {clearing ? <Loader2 size={16} className="spin" /> : <AlertTriangle size={16} />}
+                    {clearing ? 'Clearing...' : 'Clear All'}
                 </button>
             </header>
 
