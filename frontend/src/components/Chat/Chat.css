@@ -7,9 +7,11 @@
     flex-direction: column;
     height: 100vh;
     height: 100dvh;
-    /* Better for mobile browsers with dynamic UI */
     background: var(--bg-primary);
     overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* Chat Header */
@@ -26,6 +28,8 @@
     position: sticky;
     top: 0;
     z-index: 100;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .back-btn {
@@ -291,6 +295,8 @@
     border-left: none;
     border-right: none;
     background: rgba(15, 15, 26, 0.95);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .chat-input-wrapper {
