@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
     ArrowLeft, Shield, Calendar, Users, Plus, Pencil, Trash2,
     Save, X, Loader2, CheckCircle, AlertCircle, ChevronDown,
-    Award, UserCheck, Bell, Database
+    Award, UserCheck, Bell, Database, CheckSquare, Square
 } from 'lucide-react'
 import './AdminPanel.css'
 
@@ -69,6 +69,13 @@ function AdminPanel() {
     const [editingNotifId, setEditingNotifId] = useState(null)
     const [notifForm, setNotifForm] = useState({ ...EMPTY_NOTIFICATION })
     const [savingNotif, setSavingNotif] = useState(false)
+
+    // --- Selection state for bulk delete ---
+    const [selectedTimetable, setSelectedTimetable] = useState(new Set())
+    const [selectedResults, setSelectedResults] = useState(new Set())
+    const [selectedAttendance, setSelectedAttendance] = useState(new Set())
+    const [selectedNotifs, setSelectedNotifs] = useState(new Set())
+    const [bulkDeleting, setBulkDeleting] = useState(false)
 
     const showToast = (type, message) => {
         setToast({ type, message })
@@ -145,6 +152,7 @@ function AdminPanel() {
     }
 
     const handleTimetableDelete = async (id) => {
+        if (!confirm('Delete this entry?')) return
         try {
             await apiCall(`/api/admin/timetable/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
@@ -154,6 +162,20 @@ function AdminPanel() {
 
     const editTimetable = (entry) => {
         setForm({ ...entry }); setEditingId(entry.id); setShowForm(true)
+    }
+
+    const handleBulkDeleteTimetable = async () => {
+        if (!confirm(`Delete ${selectedTimetable.size} selected entries?`)) return
+        setBulkDeleting(true)
+        try {
+            for (const id of selectedTimetable) {
+                await apiCall(`/api/admin/timetable/${id}`, { method: 'DELETE' })
+            }
+            showToast('success', `Deleted ${selectedTimetable.size} entries!`)
+            setSelectedTimetable(new Set())
+            fetchEntries()
+        } catch { showToast('error', 'Some deletions failed') }
+        setBulkDeleting(false)
     }
 
     // === RESULTS ===
@@ -181,6 +203,7 @@ function AdminPanel() {
     }
 
     const handleResultDelete = async (id) => {
+        if (!confirm('Delete this result?')) return
         try {
             await apiCall(`/api/admin/results/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
@@ -190,6 +213,20 @@ function AdminPanel() {
 
     const editResult = (r) => {
         setResultForm({ ...r }); setEditingResultId(r.id); setShowResultForm(true)
+    }
+
+    const handleBulkDeleteResults = async () => {
+        if (!confirm(`Delete ${selectedResults.size} selected results?`)) return
+        setBulkDeleting(true)
+        try {
+            for (const id of selectedResults) {
+                await apiCall(`/api/admin/results/${id}`, { method: 'DELETE' })
+            }
+            showToast('success', `Deleted ${selectedResults.size} results!`)
+            setSelectedResults(new Set())
+            fetchResults()
+        } catch { showToast('error', 'Some deletions failed') }
+        setBulkDeleting(false)
     }
 
     // === ATTENDANCE ===
@@ -217,6 +254,7 @@ function AdminPanel() {
     }
 
     const handleAttendanceDelete = async (id) => {
+        if (!confirm('Delete this attendance record?')) return
         try {
             await apiCall(`/api/admin/attendance/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
@@ -226,6 +264,20 @@ function AdminPanel() {
 
     const editAttendance = (a) => {
         setAttendanceForm({ ...a }); setEditingAttendanceId(a.id); setShowAttendanceForm(true)
+    }
+
+    const handleBulkDeleteAttendance = async () => {
+        if (!confirm(`Delete ${selectedAttendance.size} selected records?`)) return
+        setBulkDeleting(true)
+        try {
+            for (const id of selectedAttendance) {
+                await apiCall(`/api/admin/attendance/${id}`, { method: 'DELETE' })
+            }
+            showToast('success', `Deleted ${selectedAttendance.size} records!`)
+            setSelectedAttendance(new Set())
+            fetchAttendance()
+        } catch { showToast('error', 'Some deletions failed') }
+        setBulkDeleting(false)
     }
 
     // === NOTIFICATIONS ===
@@ -253,6 +305,7 @@ function AdminPanel() {
     }
 
     const handleNotifDelete = async (id) => {
+        if (!confirm('Delete this notification?')) return
         try {
             await apiCall(`/api/admin/notifications/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
@@ -262,6 +315,31 @@ function AdminPanel() {
 
     const editNotif = (n) => {
         setNotifForm({ ...n }); setEditingNotifId(n.id); setShowNotifForm(true)
+    }
+
+    const handleBulkDeleteNotifs = async () => {
+        if (!confirm(`Delete ${selectedNotifs.size} selected notifications?`)) return
+        setBulkDeleting(true)
+        try {
+            for (const id of selectedNotifs) {
+                await apiCall(`/api/admin/notifications/${id}`, { method: 'DELETE' })
+            }
+            showToast('success', `Deleted ${selectedNotifs.size} notifications!`)
+            setSelectedNotifs(new Set())
+            fetchNotifications()
+        } catch { showToast('error', 'Some deletions failed') }
+        setBulkDeleting(false)
+    }
+
+    // --- Selection helpers ---
+    const toggleSelect = (set, setFn, id) => {
+        const next = new Set(set)
+        if (next.has(id)) next.delete(id); else next.add(id)
+        setFn(next)
+    }
+    const toggleSelectAll = (items, set, setFn) => {
+        if (set.size === items.length) setFn(new Set())
+        else setFn(new Set(items.map(i => i.id)))
     }
 
     // === USERS ===
@@ -382,6 +460,12 @@ function AdminPanel() {
                         <div className="section-header">
                             <h2>Timetable Manager</h2>
                             <div className="section-actions">
+                                {selectedTimetable.size > 0 && (
+                                    <button className="btn-danger" onClick={handleBulkDeleteTimetable} disabled={bulkDeleting}>
+                                        {bulkDeleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                                        Delete {selectedTimetable.size} Selected
+                                    </button>
+                                )}
                                 <select value={filterDay} onChange={e => setFilterDay(e.target.value)} className="filter-select">
                                     <option value="">All Days</option>
                                     {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -420,10 +504,14 @@ function AdminPanel() {
                                 <div key={day} className="day-group">
                                     <h3 className="day-title">{day}</h3>
                                     <table className="data-table">
-                                        <thead><tr><th>Period</th><th>Time</th><th>Subject</th><th>Staff</th><th>Actions</th></tr></thead>
+                                        <thead><tr>
+                                            <th className="check-col"><button className="icon-btn check" onClick={() => toggleSelectAll(arr, selectedTimetable, setSelectedTimetable)}>{selectedTimetable.size > 0 && arr.every(e => selectedTimetable.has(e.id)) ? <CheckSquare size={16} /> : <Square size={16} />}</button></th>
+                                            <th>Period</th><th>Time</th><th>Subject</th><th>Staff</th><th>Actions</th>
+                                        </tr></thead>
                                         <tbody>
                                             {arr.map(e => (
-                                                <tr key={e.id}>
+                                                <tr key={e.id} className={selectedTimetable.has(e.id) ? 'selected-row' : ''}>
+                                                    <td className="check-col"><button className="icon-btn check" onClick={() => toggleSelect(selectedTimetable, setSelectedTimetable, e.id)}>{selectedTimetable.has(e.id) ? <CheckSquare size={16} /> : <Square size={16} />}</button></td>
                                                     <td>{e.periodNo}</td><td>{e.startTime} - {e.endTime}</td><td>{e.subject}</td><td>{e.staffName}</td>
                                                     <td className="action-cell">
                                                         <button className="icon-btn edit" onClick={() => editTimetable(e)}><Pencil size={14} /></button>
@@ -444,9 +532,17 @@ function AdminPanel() {
                     <div className="admin-section">
                         <div className="section-header">
                             <h2>Results Manager</h2>
-                            <button className="btn-primary" onClick={() => { setResultForm({ ...EMPTY_RESULT }); setEditingResultId(null); setShowResultForm(true) }}>
-                                <Plus size={16} />Add Result
-                            </button>
+                            <div className="section-actions">
+                                {selectedResults.size > 0 && (
+                                    <button className="btn-danger" onClick={handleBulkDeleteResults} disabled={bulkDeleting}>
+                                        {bulkDeleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                                        Delete {selectedResults.size} Selected
+                                    </button>
+                                )}
+                                <button className="btn-primary" onClick={() => { setResultForm({ ...EMPTY_RESULT }); setEditingResultId(null); setShowResultForm(true) }}>
+                                    <Plus size={16} />Add Result
+                                </button>
+                            </div>
                         </div>
 
                         {showResultForm && (
@@ -479,10 +575,14 @@ function AdminPanel() {
 
                         {loadingResults ? <div className="admin-loading"><Loader2 className="spin" size={24} /></div> : (
                             <table className="data-table">
-                                <thead><tr><th>Code</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Semester</th><th>Student</th><th>Actions</th></tr></thead>
+                                <thead><tr>
+                                    <th className="check-col"><button className="icon-btn check" onClick={() => toggleSelectAll(results, selectedResults, setSelectedResults)}>{selectedResults.size === results.length && results.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}</button></th>
+                                    <th>Code</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Semester</th><th>Student</th><th>Actions</th>
+                                </tr></thead>
                                 <tbody>
                                     {results.map(r => (
-                                        <tr key={r.id}>
+                                        <tr key={r.id} className={selectedResults.has(r.id) ? 'selected-row' : ''}>
+                                            <td className="check-col"><button className="icon-btn check" onClick={() => toggleSelect(selectedResults, setSelectedResults, r.id)}>{selectedResults.has(r.id) ? <CheckSquare size={16} /> : <Square size={16} />}</button></td>
                                             <td>{r.subject}</td><td>{r.subjectName || '-'}</td>
                                             <td>{r.marks}/{r.maxMarks}</td><td><span className="grade-badge">{r.grade}</span></td>
                                             <td>{r.semester}</td><td className="uid-cell">{r.studentId?.substring(0, 8)}...</td>
@@ -504,9 +604,17 @@ function AdminPanel() {
                     <div className="admin-section">
                         <div className="section-header">
                             <h2>Attendance Manager</h2>
-                            <button className="btn-primary" onClick={() => { setAttendanceForm({ ...EMPTY_ATTENDANCE }); setEditingAttendanceId(null); setShowAttendanceForm(true) }}>
-                                <Plus size={16} />Add Record
-                            </button>
+                            <div className="section-actions">
+                                {selectedAttendance.size > 0 && (
+                                    <button className="btn-danger" onClick={handleBulkDeleteAttendance} disabled={bulkDeleting}>
+                                        {bulkDeleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                                        Delete {selectedAttendance.size} Selected
+                                    </button>
+                                )}
+                                <button className="btn-primary" onClick={() => { setAttendanceForm({ ...EMPTY_ATTENDANCE }); setEditingAttendanceId(null); setShowAttendanceForm(true) }}>
+                                    <Plus size={16} />Add Record
+                                </button>
+                            </div>
                         </div>
 
                         {showAttendanceForm && (
@@ -533,12 +641,16 @@ function AdminPanel() {
 
                         {loadingAttendance ? <div className="admin-loading"><Loader2 className="spin" size={24} /></div> : (
                             <table className="data-table">
-                                <thead><tr><th>Subject</th><th>Total</th><th>Present</th><th>Percentage</th><th>Student</th><th>Actions</th></tr></thead>
+                                <thead><tr>
+                                    <th className="check-col"><button className="icon-btn check" onClick={() => toggleSelectAll(attendance, selectedAttendance, setSelectedAttendance)}>{selectedAttendance.size === attendance.length && attendance.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}</button></th>
+                                    <th>Subject</th><th>Total</th><th>Present</th><th>Percentage</th><th>Student</th><th>Actions</th>
+                                </tr></thead>
                                 <tbody>
                                     {attendance.map(a => {
                                         const pct = a.percentage ?? (a.totalDays > 0 ? ((a.presentDays / a.totalDays) * 100).toFixed(1) : '0.0')
                                         return (
-                                            <tr key={a.id}>
+                                            <tr key={a.id} className={selectedAttendance.has(a.id) ? 'selected-row' : ''}>
+                                                <td className="check-col"><button className="icon-btn check" onClick={() => toggleSelect(selectedAttendance, setSelectedAttendance, a.id)}>{selectedAttendance.has(a.id) ? <CheckSquare size={16} /> : <Square size={16} />}</button></td>
                                                 <td>{a.subject}</td><td>{a.totalDays}</td><td>{a.presentDays}</td>
                                                 <td><span className={`pct-badge ${parseFloat(pct) < 75 ? 'low' : 'ok'}`}>{typeof pct === 'number' ? pct.toFixed(1) : pct}%</span></td>
                                                 <td className="uid-cell">{a.studentId?.substring(0, 8)}...</td>
@@ -561,9 +673,17 @@ function AdminPanel() {
                     <div className="admin-section">
                         <div className="section-header">
                             <h2>Notifications Manager</h2>
-                            <button className="btn-primary" onClick={() => { setNotifForm({ ...EMPTY_NOTIFICATION }); setEditingNotifId(null); setShowNotifForm(true) }}>
-                                <Plus size={16} />Add Notification
-                            </button>
+                            <div className="section-actions">
+                                {selectedNotifs.size > 0 && (
+                                    <button className="btn-danger" onClick={handleBulkDeleteNotifs} disabled={bulkDeleting}>
+                                        {bulkDeleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                                        Delete {selectedNotifs.size} Selected
+                                    </button>
+                                )}
+                                <button className="btn-primary" onClick={() => { setNotifForm({ ...EMPTY_NOTIFICATION }); setEditingNotifId(null); setShowNotifForm(true) }}>
+                                    <Plus size={16} />Add Notification
+                                </button>
+                            </div>
                         </div>
 
                         {showNotifForm && (
@@ -591,9 +711,18 @@ function AdminPanel() {
 
                         {loadingNotifications ? <div className="admin-loading"><Loader2 className="spin" size={24} /></div> : (
                             <div className="notif-list">
+                                <div className="notif-select-all">
+                                    <button className="icon-btn check" onClick={() => toggleSelectAll(notifications, selectedNotifs, setSelectedNotifs)}>
+                                        {selectedNotifs.size === notifications.length && notifications.length > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
+                                        <span style={{ marginLeft: 8 }}>{selectedNotifs.size === notifications.length && notifications.length > 0 ? 'Deselect All' : 'Select All'}</span>
+                                    </button>
+                                </div>
                                 {notifications.map(n => (
-                                    <div key={n.id} className={`notif-card glass-card ${n.isActive ? '' : 'inactive'}`}>
+                                    <div key={n.id} className={`notif-card glass-card ${n.isActive ? '' : 'inactive'} ${selectedNotifs.has(n.id) ? 'selected-row' : ''}`}>
                                         <div className="notif-header">
+                                            <button className="icon-btn check" onClick={() => toggleSelect(selectedNotifs, setSelectedNotifs, n.id)}>
+                                                {selectedNotifs.has(n.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                                            </button>
                                             <h4>{n.title}</h4>
                                             <div className="notif-actions">
                                                 <span className={`status-badge ${n.isActive ? 'active' : 'inactive'}`}>

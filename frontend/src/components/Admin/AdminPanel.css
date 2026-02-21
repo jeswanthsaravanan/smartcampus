@@ -662,6 +662,79 @@
     }
 }
 
+/* ---- Checkbox / Bulk Delete ---- */
+.check-col {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    text-align: center;
+}
+
+.icon-btn.check {
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+.icon-btn.check:hover {
+    color: var(--primary-light);
+}
+
+.selected-row {
+    background: rgba(124, 58, 237, 0.08) !important;
+}
+
+.selected-row .icon-btn.check {
+    color: var(--primary);
+}
+
+.btn-danger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    border-radius: var(--border-radius-md);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.notif-select-all {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.notif-select-all .icon-btn.check {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.notif-header .icon-btn.check {
+    margin-right: 8px;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
     .admin-page {
