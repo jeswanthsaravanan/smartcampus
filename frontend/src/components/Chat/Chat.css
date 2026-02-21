@@ -345,18 +345,71 @@
 @media (max-width: 640px) {
     .chat-header {
         padding: var(--space-sm) var(--space-md);
+        gap: var(--space-sm);
+    }
+
+    .chat-module-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .chat-module-info h1 {
+        font-size: var(--font-size-base);
+    }
+
+    .back-btn {
+        width: 34px;
+        height: 34px;
     }
 
     .chat-messages {
-        padding: var(--space-md);
+        padding: var(--space-sm) var(--space-md);
     }
 
     .message {
-        max-width: 90%;
+        max-width: 95%;
+    }
+
+    .message-avatar {
+        width: 26px;
+        height: 26px;
+    }
+
+    .message-bubble {
+        padding: var(--space-sm) var(--space-md);
+    }
+
+    .message-content {
+        font-size: var(--font-size-sm);
     }
 
     .chat-input-area {
         padding: var(--space-sm) var(--space-md);
+    }
+
+    .chat-input {
+        padding: var(--space-sm) var(--space-md);
+        font-size: var(--font-size-sm);
+    }
+
+    .send-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .data-table-wrapper {
+        margin: 0 calc(-1 * var(--space-sm));
+        padding: 0 var(--space-sm);
+    }
+
+    .data-table {
+        font-size: var(--font-size-xs);
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: var(--space-xs) var(--space-sm);
+        white-space: nowrap;
     }
 
     .data-stats {

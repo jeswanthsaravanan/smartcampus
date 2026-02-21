@@ -72,6 +72,7 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 16px;
     backdrop-filter: blur(16px);
+    flex-wrap: wrap;
 }
 
 .admin-header h1 {
@@ -115,6 +116,13 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     overflow-x: auto;
     flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.admin-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .admin-tab {
@@ -657,7 +665,21 @@
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
     .admin-page {
-        padding: 16px;
+        padding: 12px;
+    }
+
+    .admin-header {
+        padding: 14px 16px;
+        gap: 10px;
+    }
+
+    .admin-header h1 {
+        font-size: 1.15rem;
+    }
+
+    .admin-header .btn-primary {
+        padding: 8px 14px;
+        font-size: 0.8rem;
     }
 
     .form-grid {
@@ -669,27 +691,72 @@
         align-items: stretch;
     }
 
-    .admin-tabs {
-        overflow-x: auto;
+    .section-actions {
+        flex-wrap: wrap;
     }
 
     .data-table {
         display: block;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .inline-form {
+        padding: 16px;
+    }
+
+    .notif-card {
+        padding: 14px 16px;
+    }
+
+    .admin-setup {
+        margin: 60px auto;
+        padding: 32px 20px;
     }
 }
 
 @media (max-width: 480px) {
+    .admin-page {
+        padding: 8px;
+    }
+
+    .admin-header {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .admin-header h1 {
+        font-size: 1rem;
+    }
+
+    .back-btn {
+        width: 34px;
+        height: 34px;
+    }
+
     .form-grid {
         grid-template-columns: 1fr;
     }
 
-    .admin-tabs {
-        flex-wrap: wrap;
+    .admin-tab {
+        padding: 10px 12px;
+        font-size: 0.78rem;
+        gap: 4px;
     }
 
-    .admin-tab {
-        padding: 10px 14px;
-        font-size: 0.82rem;
+    .filter-select {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .notif-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 10px 10px;
+        font-size: 0.78rem;
     }
 }
