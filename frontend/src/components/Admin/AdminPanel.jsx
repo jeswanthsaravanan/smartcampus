@@ -145,7 +145,6 @@ function AdminPanel() {
     }
 
     const handleTimetableDelete = async (id) => {
-        if (!confirm('Delete this entry?')) return
         try {
             await apiCall(`/api/admin/timetable/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
@@ -182,7 +181,6 @@ function AdminPanel() {
     }
 
     const handleResultDelete = async (id) => {
-        if (!confirm('Delete this result?')) return
         try {
             await apiCall(`/api/admin/results/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
@@ -219,7 +217,6 @@ function AdminPanel() {
     }
 
     const handleAttendanceDelete = async (id) => {
-        if (!confirm('Delete this attendance record?')) return
         try {
             await apiCall(`/api/admin/attendance/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
@@ -256,7 +253,6 @@ function AdminPanel() {
     }
 
     const handleNotifDelete = async (id) => {
-        if (!confirm('Delete this notification?')) return
         try {
             await apiCall(`/api/admin/notifications/${id}`, { method: 'DELETE' })
             showToast('success', 'Deleted!')
