@@ -206,6 +206,7 @@
     transition: all var(--transition-base);
     cursor: pointer;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .menu-card:hover {
