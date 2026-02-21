@@ -290,11 +290,11 @@
 /* Input Area */
 .chat-input-area {
     padding: var(--space-md) var(--space-lg);
+    padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
     border-radius: 0;
-    border-bottom: none;
-    border-left: none;
-    border-right: none;
+    border: none;
     background: rgba(15, 15, 26, 0.95);
+    border-top: 1px solid var(--border-color);
     width: 100%;
     box-sizing: border-box;
 }
