@@ -1,19 +1,32 @@
 /* ========================================
-   Chat Interface Styles
-   Clean, responsive WhatsApp-inspired layout
+   Chat Interface — Centered Mobile-Style Layout
+   Max 420px width, centered on all screens
    ======================================== */
 
-/* ---- Page Container ---- */
+/* ---- Page Container: Centered on desktop ---- */
 .chat-page {
     display: flex;
     flex-direction: column;
     height: 100vh;
     height: 100dvh;
     width: 100%;
-    max-width: 100%;
-    overflow: hidden;
+    max-width: 420px;
+    margin: 0 auto;
     background: var(--bg-primary);
+    overflow: hidden;
     box-sizing: border-box;
+    position: relative;
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+/* Remove side borders on actual mobile (full width) */
+@media (max-width: 420px) {
+    .chat-page {
+        max-width: 100%;
+        border-left: none;
+        border-right: none;
+    }
 }
 
 /* ---- Chat Header ---- */
@@ -31,7 +44,7 @@
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
-    z-index: 100;
+    z-index: 10;
 }
 
 .back-btn {
@@ -84,9 +97,7 @@
 }
 
 .messages-list {
-    max-width: 700px;
     width: 100%;
-    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -96,7 +107,7 @@
 .message {
     display: flex;
     gap: 8px;
-    max-width: 85%;
+    max-width: 88%;
     box-sizing: border-box;
 }
 
@@ -114,8 +125,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: var(--bg-glass);
     border: 1px solid var(--border-color);
@@ -132,7 +143,7 @@
 
 /* ---- Message Bubble ---- */
 .message-bubble {
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-radius: 18px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -161,7 +172,7 @@
 
 /* ---- Message Content ---- */
 .message-content {
-    font-size: 0.925rem;
+    font-size: 0.9rem;
     line-height: 1.5;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -169,7 +180,7 @@
 }
 
 .message-time {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
     margin-top: 6px;
     text-align: right;
@@ -187,8 +198,8 @@
 }
 
 .typing-indicator span {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     background: var(--text-muted);
     border-radius: 50%;
     animation: bounce 1.4s ease-in-out infinite;
@@ -208,25 +219,25 @@
 
 /* ---- Message Data (Tables, Stats, Lists) ---- */
 .message-data {
-    margin-top: 12px;
+    margin-top: 10px;
 }
 
 .data-table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    margin: 0 -8px;
-    padding: 0 8px;
+    margin: 0 -6px;
+    padding: 0 6px;
 }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
 }
 
 .data-table th,
 .data-table td {
-    padding: 8px 10px;
+    padding: 6px 8px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
@@ -246,11 +257,10 @@
     background: rgba(255, 255, 255, 0.02);
 }
 
-/* Data Stats */
 .data-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
 }
 
 .stat-item {
@@ -264,12 +274,12 @@
 }
 
 .stat-item-label {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
 }
 
 .stat-item-value {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
 }
 
@@ -285,7 +295,6 @@
     color: var(--error);
 }
 
-/* Data List */
 .data-list {
     list-style: none;
     display: flex;
@@ -298,7 +307,7 @@
     background: var(--bg-glass);
     border-radius: 6px;
     border: 1px solid var(--border-color);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
 }
 
 .data-list li::before {
@@ -309,8 +318,8 @@
 
 /* ---- Input Area ---- */
 .chat-input-area {
-    padding: 12px 16px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 14px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     background: rgba(15, 15, 26, 0.95);
     border-top: 1px solid var(--border-color);
     border-radius: 0 !important;
@@ -323,9 +332,7 @@
 }
 
 .chat-input-wrapper {
-    max-width: 700px;
     width: 100%;
-    margin: 0 auto;
     display: flex;
     gap: 10px;
     align-items: center;
@@ -335,12 +342,12 @@
 .chat-input {
     flex: 1;
     min-width: 0;
-    padding: 12px 20px;
+    padding: 10px 18px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 24px;
     color: var(--text-primary);
-    font-size: 0.925rem;
+    font-size: 0.9rem;
     transition: all 0.25s ease;
     box-sizing: border-box;
 }
@@ -358,14 +365,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     background: var(--gradient-primary);
     border-radius: 50%;
     color: white;
     transition: all 0.25s ease;
     flex-shrink: 0;
-    box-sizing: border-box;
 }
 
 .send-btn:hover:not(:disabled) {
@@ -392,7 +398,7 @@
 }
 
 .notification-status {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     margin-bottom: 16px;
     font-weight: 600;
 }
@@ -450,7 +456,7 @@ input:checked+.slider:before {
 }
 
 /* ---- Mobile Responsive ---- */
-@media (max-width: 640px) {
+@media (max-width: 420px) {
     .chat-header {
         padding: 10px 12px;
         gap: 10px;
@@ -484,29 +490,25 @@ input:checked+.slider:before {
     }
 
     .message-bubble {
-        padding: 10px 14px;
+        padding: 8px 12px;
     }
 
     .message-content {
-        font-size: 0.875rem;
+        font-size: 0.85rem;
     }
 
     .chat-input-area {
-        padding: 10px 12px;
-        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        padding: 8px 10px;
+        padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     }
 
     .chat-input {
-        padding: 10px 16px;
-        font-size: 0.875rem;
+        padding: 9px 14px;
+        font-size: 0.85rem;
     }
 
     .send-btn {
-        width: 40px;
-        height: 40px;
-    }
-
-    .data-stats {
-        grid-template-columns: repeat(2, 1fr);
+        width: 38px;
+        height: 38px;
     }
 }
