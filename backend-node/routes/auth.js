@@ -21,11 +21,24 @@ router.post('/register-profile', async (req, res) => {
         const docRef = db.collection('students').doc(uid);
         const doc = await docRef.get();
 
+        const DEFAULT_ADMIN_EMAIL = 'sjeswanth1205@gmail.com';
+        const isAdminEmail = DEFAULT_ADMIN_EMAIL.toLowerCase() === email.toLowerCase();
+
         if (doc.exists) {
             // Update photo URL if it changed
             const student = doc.data();
+            const updates = {};
             if (photoUrl && photoUrl !== student.photoUrl) {
-                await docRef.update({ photoUrl, updatedAt: Date.now() });
+                updates.photoUrl = photoUrl;
+            }
+            // Fix: Enforce ADMIN role if email matches default admin
+            if (isAdminEmail && student.role !== 'ADMIN') {
+                updates.role = 'ADMIN';
+            }
+
+            if (Object.keys(updates).length > 0) {
+                updates.updatedAt = Date.now();
+                await docRef.update(updates);
             }
             const updated = (await docRef.get()).data();
             return res.json({ uid, ...updated });
@@ -33,10 +46,7 @@ router.post('/register-profile', async (req, res) => {
 
         // New user — create profile
         const fullName = name || 'Student';
-        const DEFAULT_ADMIN_EMAIL = 'sjeswanth1205@gmail.com';
-        const assignedRole = DEFAULT_ADMIN_EMAIL.toLowerCase() === email.toLowerCase()
-            ? 'ADMIN'
-            : (role || 'STUDENT');
+        const assignedRole = isAdminEmail ? 'ADMIN' : (role || 'STUDENT');
 
         let firstName = fullName;
         let lastName = '';

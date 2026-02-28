@@ -7,6 +7,11 @@ const admin = require('firebase-admin');
  */
 async function adminCheck(req, res, next) {
     try {
+        const DEFAULT_ADMIN_EMAIL = 'sjeswanth1205@gmail.com';
+        if (req.user.email && req.user.email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase()) {
+            return next();
+        }
+
         const db = admin.firestore();
         const doc = await db.collection('students').doc(req.user.uid).get();
 

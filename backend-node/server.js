@@ -67,8 +67,8 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/results', require('./routes/results'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/student', require('./routes/student'));
-app.use('/api/admin', require('./routes/admin'));
 app.use('/api/admin', require('./routes/admin').setupRouter);
+app.use('/api/admin', require('./routes/admin'));
 
 // Health check
 app.get('/health', (req, res) => {
