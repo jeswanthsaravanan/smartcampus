@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { API_BASE_URL } from '../../config/api'
 import {
     ArrowLeft, Shield, Calendar, Users, Plus, Pencil, Trash2,
     Save, X, Loader2, CheckCircle, AlertCircle, ChevronDown,
@@ -85,7 +86,8 @@ function AdminPanel() {
 
     const apiCall = useCallback(async (url, options = {}) => {
         const token = await getAuthToken()
-        const res = await fetch(url, {
+        const fullUrl = url.startsWith('/api') ? `${API_BASE_URL}${url}` : url;
+        const res = await fetch(fullUrl, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',

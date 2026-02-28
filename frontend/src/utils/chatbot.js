@@ -6,6 +6,7 @@
 
 import { Calendar, Award, UserCheck, Bell } from 'lucide-react'
 import { auth } from '../firebase'
+import { API_BASE_URL } from '../config/api'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
@@ -260,12 +261,22 @@ function detectIntent(module, message) {
         // Day-specific attendance
         const day = getDayOfWeekFromMessage(lower)
         if (day) return day
-        // Default: overall attendance
-        return 'status'
+        // Only show overall attendance if the message is actually about attendance
+        const attendanceKeywords = ['attendance', 'present', 'absent', 'shortage', 'percentage', 'status', 'how many', 'classes attended', 'show', 'my', 'what', 'check', 'total']
+        if (attendanceKeywords.some(k => lower.includes(k))) return 'status'
+        return 'unknown'
     }
 
-    if (module === 'result') return 'all'
-    if (module === 'notification') return 'all'
+    if (module === 'result') {
+        const resultKeywords = ['result', 'results', 'marks', 'grade', 'grades', 'score', 'scores', 'exam', 'semester', 'performance', 'show', 'my', 'what', 'check', 'how', 'cgpa', 'gpa', 'pass', 'fail']
+        if (resultKeywords.some(k => lower.includes(k))) return 'all'
+        return 'unknown'
+    }
+    if (module === 'notification') {
+        const notifKeywords = ['notification', 'notifications', 'notice', 'announcement', 'update', 'updates', 'latest', 'new', 'show', 'what', 'any', 'check', 'alert', 'alerts', 'news']
+        if (notifKeywords.some(k => lower.includes(k))) return 'all'
+        return 'unknown'
+    }
 
     return 'unknown'
 }
@@ -280,12 +291,18 @@ async function getAuthToken() {
 
 async function apiFetch(endpoint) {
     const token = await getAuthToken()
-    const response = await fetch(endpoint, {
+    const fullUrl = endpoint.startsWith('/api') ? `${API_BASE_URL}${endpoint}` : endpoint
+    const response = await fetch(fullUrl, {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
         }
     })
+    // Check if the response is JSON before parsing
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
+        throw new Error('Server returned an unexpected response. Please ensure the backend is running and accessible.')
+    }
     const data = await response.json()
     if (!response.ok) {
         if (data && data.message) throw new Error(data.message)
@@ -351,12 +368,24 @@ export async function processMessage(module, message, user) {
 
         // ── RESULT ──
         if (module === 'result') {
+            if (intent === 'unknown') {
+                return {
+                    text: `🤔 I didn't quite understand that. Try asking:\n• "Show my exam results"\n• "What are my marks?"\n• "My grades"\n• "Show semester results"`,
+                    data: null
+                }
+            }
             const data = await apiFetch('/api/results')
             return formatResults(data)
         }
 
         // ── ATTENDANCE ──
         if (module === 'attendance') {
+            if (intent === 'unknown') {
+                return {
+                    text: `🤔 I didn't quite understand that. Try asking:\n• "What is my attendance?"\n• "Do I have attendance shortage?"\n• "Show attendance percentage"\n• "Monday attendance"\n• "Yesterday's attendance"`,
+                    data: null
+                }
+            }
             if (intent === 'future_date') {
                 return {
                     text: '⚠️ **Attendance is not available for future dates.**\n\nI can only show attendance for today or past dates. Try asking:\n• "Today\'s attendance"\n• "Yesterday\'s attendance"\n• "Monday attendance"',
@@ -394,6 +423,12 @@ export async function processMessage(module, message, user) {
 
         // ── NOTIFICATION ──
         if (module === 'notification') {
+            if (intent === 'unknown') {
+                return {
+                    text: `🤔 I didn't quite understand that. Try asking:\n• "Show notifications"\n• "Any new updates?"\n• "Latest announcements"`,
+                    data: null
+                }
+            }
             const data = await apiFetch('/api/notifications')
             return formatNotifications(data)
         }

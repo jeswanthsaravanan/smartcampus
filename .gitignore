@@ -35,3 +35,8 @@ firebase-debug.log
 # Misc
 *.log
 relative_day_test.html
+
+# Node.js backend
+backend-node/node_modules/
+backend-node/serviceAccountKey.json
+backend-node/.env

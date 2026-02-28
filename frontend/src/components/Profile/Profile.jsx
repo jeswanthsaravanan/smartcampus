@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { API_BASE_URL } from '../../config/api'
 import {
     ArrowLeft, Save, User, Mail, Hash, Building2, CalendarRange,
     GraduationCap, Camera, CheckCircle, AlertCircle, Loader2
@@ -57,7 +58,7 @@ function Profile() {
     const fetchProfile = async () => {
         try {
             const token = await getAuthToken()
-            const res = await fetch('/api/student/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/student/profile`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             if (res.ok) {
@@ -94,7 +95,7 @@ function Profile() {
                 year: form.year ? Number(form.year) : null
             }
 
-            const res = await fetch('/api/student/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/student/profile`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,

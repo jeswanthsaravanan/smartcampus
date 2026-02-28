@@ -9,6 +9,7 @@ import {
     getIdToken
 } from 'firebase/auth'
 import { auth } from '../firebase'
+import { API_BASE_URL } from '../config/api'
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
 
                     // Fetch profile from backend to ensure Firestore has it
                     // and to get additional fields (name, role)
-                    const response = await fetch('/api/auth/me', {
+                    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
@@ -77,7 +78,7 @@ export function AuthProvider({ children }) {
             const token = await firebaseUser.getIdToken()
 
             // After login, we can try to get the profile
-            const response = await fetch('/api/auth/me', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -122,7 +123,7 @@ export function AuthProvider({ children }) {
 
             // Always call register-profile for Google sign-in
             // Backend handles both new and existing users, and syncs photo/name each time
-            const regResponse = await fetch('/api/auth/register-profile', {
+            const regResponse = await fetch(`${API_BASE_URL}/api/auth/register-profile`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -172,7 +173,7 @@ export function AuthProvider({ children }) {
             const token = await firebaseUser.getIdToken()
 
             // Register profile on backend
-            const response = await fetch('/api/auth/register-profile', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/register-profile`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
