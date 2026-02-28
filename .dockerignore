@@ -1,0 +1,11 @@
+node_modules
+.git
+.firebase
+frontend
+database
+*.md
+*.zip
+*.log
+.vscode
+.firebaserc
+firebase.json
