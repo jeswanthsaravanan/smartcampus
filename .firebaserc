@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "smartcampus0512"
-  }
+  },
+  "targets": {
+    "smartcampus0512": {
+      "hosting": {
+        "smartcampus0605": [
+          "smartcampus0605"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

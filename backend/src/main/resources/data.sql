@@ -1,2 +1,0 @@
--- Data initialization is now handled by DataInitializer.java
--- This file is kept empty to avoid conflicts with the new schema.
